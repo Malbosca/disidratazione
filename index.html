@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="description" content="Gestione lavorazioni disidratazione frutta e verdura">
+    <title>Gestione Disidratazione</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Install Prompt -->
+    <div id="installPrompt" class="install-prompt hidden">
+        <div class="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <span>📱 Installa l'app sul tuo dispositivo</span>
+            <button id="installBtn" class="bg-white text-green-600 px-4 py-1 rounded font-medium">
+                Installa
+            </button>
+            <button id="dismissBtn" class="text-white">✕</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registrato', reg))
+                .catch(err => console.log('Errore Service Worker', err));
+        }
+
+        // Install Prompt
+        let deferredPrompt;
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installPrompt.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Install outcome:', outcome);
+                deferredPrompt = null;
+                installPrompt.classList.add('hidden');
+            }
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            installPrompt.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
