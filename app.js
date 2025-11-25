@@ -201,27 +201,28 @@ function App() {
         const lav = lavorazioni.find(l => l.id === currentLavorazione.id);
         setCurrentLavorazione(lav);
 
-        // Reset form attività
-        setAttivitaGiornaliera({
-            data: new Date(new Date(attivitaGiornaliera.data).getTime() + 86400000).toISOString().split('T')[0],
-            oraInizioLavoro: '',
-            oraFineLavoro: '',
-            numeroPersone: 1,
-            oraAccensione40: '',
-            oraSpegnimento40: '',
-            oraAccensione100: '',
-            oraSpegnimento100: '',
-            pulizie: {
-                pianoLavoro: false,
-                tagliaverdure: false,
-                scopatoPavimento: false,
-                lavatoPavimento: false,
-                disidratatore: false,
-                ceste: false,
-                retine: false
-            },
-            note: ''
-        });
+setAttivitaGiornaliera({
+    data: new Date(new Date(attivitaGiornaliera.data).getTime() + 86400000).toISOString().split('T')[0],
+    oraInizioLavoro: '',
+    oraFineLavoro: '',
+    numeroPersone: 1,
+    oraAccensione40: '',
+    oraSpegnimento40: '',
+    oraAccensione100: '',
+    oraSpegnimento100: '',
+    pulizie: {
+        pianoLavoro: false,
+        tagliaverdure: false,
+        scopatoPavimento: false,
+        lavatoPavimento: false,
+        disidratatore: false,
+        ceste: false,
+        retine: false
+    },
+    note: ''
+});
+
+setCurrentLavorazione(null);
     };
 
     const completaLavorazione = async () => {
@@ -466,10 +467,10 @@ function App() {
                                             ${att.pulizie && Object.values(att.pulizie).some(v => v) && html`
                                                 <div class="mt-1 flex flex-wrap gap-1">
                                                     ${att.pulizie.pianoLavoro && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Piano</span>`}
-                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Taglia</span>`}
-                                                    ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopato</span>`}
-                                                    ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavato</span>`}
-                                                    ${att.pulizie.disidratatore && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Disid.</span>`}
+                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Tagliaverdure</span>`}
+                                                    ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopato Pavimento</span>`}
+                                                    ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavato Pavimento</span>`}
+                                                    ${att.pulizie.disidratatore && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Disidratatore</span>`}
                                                     ${att.pulizie.ceste && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Ceste</span>`}
                                                     ${att.pulizie.retine && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Retine</span>`}
                                                 </div>
@@ -570,10 +571,10 @@ function App() {
                                         <div class="grid grid-cols-2 gap-2">
                                             ${Object.entries({
                                                 pianoLavoro: 'Piano',
-                                                tagliaverdure: 'Taglia',
-                                                scopatoPavimento: 'Scopato',
-                                                lavatoPavimento: 'Lavato',
-                                                disidratatore: 'Disid.',
+                                                tagliaverdure: 'Tagliaverdure',
+                                                scopatoPavimento: 'Scopato Pavimento',
+                                                lavatoPavimento: 'Lavato Pavimento',
+                                                disidratatore: 'Disidratatore',
                                                 ceste: 'Ceste',
                                                 retine: 'Retine'
                                             }).map(([key, label]) => html`
