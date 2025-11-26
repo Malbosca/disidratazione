@@ -3,7 +3,7 @@ import { html, render, useState, useEffect } from 'https://esm.sh/htm/preact/sta
 // ============================================
 // CONFIGURAZIONE API
 // ============================================
-const API_URL = 'https://disidratazione-backend.aziendamalbosca.workers.dev'; // Sostituisci con il tuo URL Cloudflare Worker
+const API_URL = 'https://disidratazione-backend.aziendamalbosca.workers.dev';
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -41,7 +41,6 @@ const API = {
             return await response.json();
         } catch (error) {
             console.error('Errore API:', error);
-            // Fallback localStorage
             const stored = localStorage.getItem('lavorazioni');
             return stored ? JSON.parse(stored) : [];
         }
@@ -56,7 +55,6 @@ const API = {
             });
             if (!response.ok) throw new Error('Errore salvataggio');
             
-            // Backup localStorage
             const lavorazioni = await this.caricaLavorazioni();
             const index = lavorazioni.findIndex(l => l.id === lavorazione.id);
             if (index >= 0) {
@@ -80,7 +78,6 @@ const API = {
             });
             if (!response.ok) throw new Error('Errore eliminazione');
             
-            // Backup localStorage
             const lavorazioni = await this.caricaLavorazioni();
             const nuove = lavorazioni.filter(l => l.id !== id);
             localStorage.setItem('lavorazioni', JSON.stringify(nuove));
@@ -89,6 +86,21 @@ const API = {
         } catch (error) {
             console.error('Errore eliminazione:', error);
             return false;
+        }
+    },
+
+    async creaLotto(datiLotto) {
+        try {
+            const response = await fetch(`${API_URL}/crea-lotto`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datiLotto)
+            });
+            if (!response.ok) throw new Error('Errore creazione lotto');
+            return await response.json();
+        } catch (error) {
+            console.error('Errore creazione lotto:', error);
+            return { success: false, error: error.message };
         }
     }
 };
@@ -103,6 +115,10 @@ function App() {
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(true);
     const [online, setOnline] = useState(navigator.onLine);
+    const [kgSecco, setKgSecco] = useState('');
+    const [showReport, setShowReport] = useState(false);
+    const [categoriaLotto, setCategoriaLotto] = useState('frutta');
+    const [creatingLotto, setCreatingLotto] = useState(false);
 
     const [formData, setFormData] = useState({
         prodotto: '',
@@ -132,13 +148,9 @@ function App() {
         note: ''
     });
 
-    const [kgSecco, setKgSecco] = useState('');
-    const [showReport, setShowReport] = useState(false);
-
     useEffect(() => {
         caricaDati();
         
-        // Online/Offline detection
         window.addEventListener('online', () => setOnline(true));
         window.addEventListener('offline', () => setOnline(false));
     }, []);
@@ -198,32 +210,29 @@ function App() {
 
         await API.salvaLavorazione(lavorazioneAggiornata);
         await caricaDati();
+
+        setAttivitaGiornaliera({
+            data: new Date(new Date(attivitaGiornaliera.data).getTime() + 86400000).toISOString().split('T')[0],
+            oraInizioLavoro: '',
+            oraFineLavoro: '',
+            numeroPersone: 1,
+            oraAccensione40: '',
+            oraSpegnimento40: '',
+            oraAccensione100: '',
+            oraSpegnimento100: '',
+            pulizie: {
+                pianoLavoro: false,
+                tagliaverdure: false,
+                scopatoPavimento: false,
+                lavatoPavimento: false,
+                disidratatore: false,
+                ceste: false,
+                retine: false
+            },
+            note: ''
+        });
         
-        const lav = lavorazioni.find(l => l.id === currentLavorazione.id);
-        setCurrentLavorazione(lav);
-
-setAttivitaGiornaliera({
-    data: new Date(new Date(attivitaGiornaliera.data).getTime() + 86400000).toISOString().split('T')[0],
-    oraInizioLavoro: '',
-    oraFineLavoro: '',
-    numeroPersone: 1,
-    oraAccensione40: '',
-    oraSpegnimento40: '',
-    oraAccensione100: '',
-    oraSpegnimento100: '',
-    pulizie: {
-        pianoLavoro: false,
-        tagliaverdure: false,
-        scopatoPavimento: false,
-        lavatoPavimento: false,
-        disidratatore: false,
-        ceste: false,
-        retine: false
-    },
-    note: ''
-});
-
-setCurrentLavorazione(null);
+        setCurrentLavorazione(null);
     };
 
     const completaLavorazione = async () => {
@@ -243,14 +252,19 @@ setCurrentLavorazione(null);
             return;
         }
 
+        setCreatingLotto(true);
+
         let oreManooperaTotali = 0;
-        let oreMacchinaTotali = 0;
+        let oreDisidratatore40 = 0;
+        let oreDisidratatore100 = 0;
 
         currentLavorazione.attivita.forEach(att => {
             oreManooperaTotali += calcolaOreManodopera(att.oraInizioLavoro, att.oraFineLavoro, att.numeroPersone);
-            oreMacchinaTotali += calcolaOreMacchina(att.oraAccensione40, att.oraSpegnimento40);
-            oreMacchinaTotali += calcolaOreMacchina(att.oraAccensione100, att.oraSpegnimento100);
+            oreDisidratatore40 += calcolaOreMacchina(att.oraAccensione40, att.oraSpegnimento40);
+            oreDisidratatore100 += calcolaOreMacchina(att.oraAccensione100, att.oraSpegnimento100);
         });
+
+        const oreMacchinaTotali = oreDisidratatore40 + oreDisidratatore100;
 
         const lavorazioneCompletata = {
             ...currentLavorazione,
@@ -261,10 +275,35 @@ setCurrentLavorazione(null);
         };
 
         await API.salvaLavorazione(lavorazioneCompletata);
+
+        // Crea il lotto automaticamente
+        const datiLotto = {
+            prodotto: currentLavorazione.prodotto,
+            fornitore: currentLavorazione.fornitore,
+            dataInizio: currentLavorazione.dataInizio,
+            kgFreschi: currentLavorazione.kgAcquistati,
+            kgSecco: kgSecco,
+            oreManodopera: oreManooperaTotali,
+            oreDisidratatore40: oreDisidratatore40,
+            oreDisidratatore100: oreDisidratatore100,
+            categoria: categoriaLotto
+        };
+
+        const risultatoLotto = await API.creaLotto(datiLotto);
+        
+        setCreatingLotto(false);
+
+        if (risultatoLotto.success) {
+            alert(`✅ Lavorazione completata!\n\n📦 Lotto ${risultatoLotto.lotNumber} creato automaticamente nel foglio Lotti!`);
+        } else {
+            alert(`✅ Lavorazione completata!\n\n⚠️ Errore creazione lotto: ${risultatoLotto.error}\n\nPuoi crearlo manualmente.`);
+        }
+
         await caricaDati();
         
         setCurrentLavorazione(null);
         setKgSecco('');
+        setCategoriaLotto('frutta');
     };
 
     const riprendiLavorazione = (lav) => {
@@ -320,20 +359,20 @@ setCurrentLavorazione(null);
                     </div>
                 </div>
 
-               <!-- Pulsanti Azione -->
+                <!-- Pulsanti Azione -->
                 <div class="mb-4 flex gap-3 flex-wrap">
-                <button
-                onClick=${() => { setShowForm(!showForm); setShowReport(false); }}
-                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
-                >
-                ${showForm ? '❌ Chiudi' : '➕ Nuova Lavorazione'}
-                </button>
-                <button
-                onClick=${() => { setShowReport(!showReport); setShowForm(false); }}
-                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
-                >
-                ${showReport ? '❌ Chiudi' : '📊 Report'}
-                </button>
+                    <button
+                        onClick=${() => { setShowForm(!showForm); setShowReport(false); }}
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
+                    >
+                        ${showForm ? '❌ Chiudi' : '➕ Nuova Lavorazione'}
+                    </button>
+                    <button
+                        onClick=${() => { setShowReport(!showReport); setShowForm(false); }}
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
+                    >
+                        ${showReport ? '❌ Chiudi' : '📊 Report'}
+                    </button>
                 </div>
 
                 <!-- Form nuova lavorazione -->
@@ -389,165 +428,165 @@ setCurrentLavorazione(null);
                         </button>
                     </div>
                 `}
-                 ${showReport && html`
-    <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Report e Statistiche</h2>
-        
-        ${(() => {
-            const completate = lavorazioni.filter(l => l.completata);
-            const totKgFreschi = completate.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
-            const totKgSecchi = completate.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
-            const totOreManodopera = completate.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
-            const totOreMacchina = completate.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
-            const resaMedia = totKgFreschi > 0 ? ((totKgSecchi / totKgFreschi) * 100).toFixed(1) : 0;
-            
-            // Statistiche per prodotto
-            const perProdotto = {};
-            completate.forEach(l => {
-                const prod = l.prodotto || 'Sconosciuto';
-                if (!perProdotto[prod]) {
-                    perProdotto[prod] = { kgFreschi: 0, kgSecchi: 0, count: 0 };
-                }
-                perProdotto[prod].kgFreschi += parseFloat(l.kgAcquistati) || 0;
-                perProdotto[prod].kgSecchi += parseFloat(l.kgSecco) || 0;
-                perProdotto[prod].count += 1;
-            });
-            
-            // Statistiche per fornitore
-            const perFornitore = {};
-            completate.forEach(l => {
-                const forn = l.fornitore || 'Sconosciuto';
-                if (!perFornitore[forn]) {
-                    perFornitore[forn] = { kgFreschi: 0, count: 0 };
-                }
-                perFornitore[forn].kgFreschi += parseFloat(l.kgAcquistati) || 0;
-                perFornitore[forn].count += 1;
-            });
-            
-            // Questo mese
-            const oggi = new Date();
-            const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
-            const questoMese = completate.filter(l => new Date(l.dataInizio) >= inizioMese);
-            const kgMese = questoMese.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
-            // Quest'anno
-            const inizioAnno = new Date(oggi.getFullYear(), 0, 1);
-            const questAnno = completate.filter(l => new Date(l.dataInizio) >= inizioAnno);
-            const kgAnnoFreschi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
-            const kgAnnoSecchi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
-            const oreManodoperaAnno = questAnno.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
-            const oreMacchinaAnno = questAnno.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
-            const resaAnno = kgAnnoFreschi > 0 ? ((kgAnnoSecchi / kgAnnoFreschi) * 100).toFixed(1) : 0;
-            
-            return html`
-                <!-- Statistiche Generali -->
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                    <div class="bg-green-50 p-3 rounded-lg text-center">
-                        <div class="text-2xl font-bold text-green-600">${completate.length}</div>
-                        <div class="text-xs text-gray-600">Lavorazioni completate</div>
-                    </div>
-                    <div class="bg-blue-50 p-3 rounded-lg text-center">
-                        <div class="text-2xl font-bold text-blue-600">${totKgFreschi.toFixed(0)}</div>
-                        <div class="text-xs text-gray-600">Kg freschi totali</div>
-                    </div>
-                    <div class="bg-purple-50 p-3 rounded-lg text-center">
-                        <div class="text-2xl font-bold text-purple-600">${totKgSecchi.toFixed(1)}</div>
-                        <div class="text-xs text-gray-600">Kg secchi totali</div>
-                    </div>
-                    <div class="bg-yellow-50 p-3 rounded-lg text-center">
-                        <div class="text-2xl font-bold text-yellow-600">${resaMedia}%</div>
-                        <div class="text-xs text-gray-600">Resa media</div>
-                    </div>
-                    <div class="bg-orange-50 p-3 rounded-lg text-center">
-                        <div class="text-2xl font-bold text-orange-600">${totOreManodopera.toFixed(1)}</div>
-                        <div class="text-xs text-gray-600">Ore manodopera</div>
-                    </div>
-                    <div class="bg-red-50 p-3 rounded-lg text-center">
-                        <div class="text-2xl font-bold text-red-600">${totOreMacchina.toFixed(1)}</div>
-                        <div class="text-xs text-gray-600">Ore macchina</div>
-                    </div>
-                </div>
-                
-            <!-- Quest'anno -->
-            <div class="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg mb-4 border border-green-200">
-            <h3 class="font-bold text-gray-700 mb-3">📅 Anno ${oggi.getFullYear()}</h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div class="text-center">
-            <div class="text-xl font-bold text-green-600">${questAnno.length}</div>
-            <div class="text-xs text-gray-600">Lavorazioni</div>
-            </div>
-            <div class="text-center">
-            <div class="text-xl font-bold text-blue-600">${kgAnnoFreschi.toFixed(0)} kg</div>
-            <div class="text-xs text-gray-600">Freschi</div>
-            </div>
-            <div class="text-center">
-            <div class="text-xl font-bold text-orange-600">${oreManodoperaAnno.toFixed(1)} h</div>
-            <div class="text-xs text-gray-600">Manodopera</div>
-            </div>
-            <div class="text-center">
-            <div class="text-xl font-bold text-red-600">${oreMacchinaAnno.toFixed(1)} h</div>
-            <div class="text-xs text-gray-600">Macchina</div>
-        </div>
-        </div>
-        <div class="mt-3 pt-3 border-t border-green-200 flex justify-between text-sm">
-        <span>Kg secchi: <strong>${kgAnnoSecchi.toFixed(1)}</strong></span>
-        <span>Resa media: <strong class="text-green-600">${resaAnno}%</strong></span>
-    </div>
-</div>
 
-    <!-- Questo mese -->
-    <div class="bg-gray-50 p-3 rounded-lg mb-4">
-    <h3 class="font-bold text-gray-700 mb-2">📅 Questo mese</h3>
-    <div class="flex gap-4">
-        <span class="text-sm"><strong>${questoMese.length}</strong> lavorazioni</span>
-        <span class="text-sm"><strong>${kgMese.toFixed(0)}</strong> kg freschi</span>
-    </div>
-</div>
-                
-                <!-- Per Prodotto -->
-                <div class="mb-4">
-                    <h3 class="font-bold text-gray-700 mb-2">🥕 Per Prodotto</h3>
-                    <div class="space-y-2">
-                        ${Object.entries(perProdotto)
-                            .sort((a, b) => b[1].kgFreschi - a[1].kgFreschi)
-                            .map(([prod, data]) => {
-                                const resa = data.kgFreschi > 0 ? ((data.kgSecchi / data.kgFreschi) * 100).toFixed(1) : 0;
-                                return html`
-                                    <div class="bg-white p-2 rounded border flex justify-between items-center">
-                                        <span class="font-medium">${prod}</span>
-                                        <div class="text-sm text-gray-600">
-                                            <span class="mr-3">${data.count}x</span>
-                                            <span class="mr-3">${data.kgFreschi.toFixed(0)} kg</span>
-                                            <span class="text-green-600">resa ${resa}%</span>
-                                        </div>
+                <!-- Report e Statistiche -->
+                ${showReport && html`
+                    <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Report e Statistiche</h2>
+                        
+                        ${(() => {
+                            const completate = lavorazioni.filter(l => l.completata);
+                            const totKgFreschi = completate.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+                            const totKgSecchi = completate.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
+                            const totOreManodopera = completate.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
+                            const totOreMacchina = completate.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
+                            const resaMedia = totKgFreschi > 0 ? ((totKgSecchi / totKgFreschi) * 100).toFixed(1) : 0;
+                            
+                            const perProdotto = {};
+                            completate.forEach(l => {
+                                const prod = l.prodotto || 'Sconosciuto';
+                                if (!perProdotto[prod]) {
+                                    perProdotto[prod] = { kgFreschi: 0, kgSecchi: 0, count: 0 };
+                                }
+                                perProdotto[prod].kgFreschi += parseFloat(l.kgAcquistati) || 0;
+                                perProdotto[prod].kgSecchi += parseFloat(l.kgSecco) || 0;
+                                perProdotto[prod].count += 1;
+                            });
+                            
+                            const perFornitore = {};
+                            completate.forEach(l => {
+                                const forn = l.fornitore || 'Sconosciuto';
+                                if (!perFornitore[forn]) {
+                                    perFornitore[forn] = { kgFreschi: 0, count: 0 };
+                                }
+                                perFornitore[forn].kgFreschi += parseFloat(l.kgAcquistati) || 0;
+                                perFornitore[forn].count += 1;
+                            });
+                            
+                            const oggi = new Date();
+                            const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+                            const questoMese = completate.filter(l => new Date(l.dataInizio) >= inizioMese);
+                            const kgMese = questoMese.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+                            
+                            const inizioAnno = new Date(oggi.getFullYear(), 0, 1);
+                            const questAnno = completate.filter(l => new Date(l.dataInizio) >= inizioAnno);
+                            const kgAnnoFreschi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+                            const kgAnnoSecchi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
+                            const oreManodoperaAnno = questAnno.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
+                            const oreMacchinaAnno = questAnno.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
+                            const resaAnno = kgAnnoFreschi > 0 ? ((kgAnnoSecchi / kgAnnoFreschi) * 100).toFixed(1) : 0;
+                            
+                            return html`
+                                <!-- Statistiche Generali -->
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                                    <div class="bg-green-50 p-3 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-green-600">${completate.length}</div>
+                                        <div class="text-xs text-gray-600">Lavorazioni completate</div>
                                     </div>
-                                `;
-                            })
-                        }
-                    </div>
-                </div>
-                
-                <!-- Per Fornitore -->
-                <div>
-                    <h3 class="font-bold text-gray-700 mb-2">🏪 Per Fornitore</h3>
-                    <div class="space-y-2">
-                        ${Object.entries(perFornitore)
-                            .sort((a, b) => b[1].kgFreschi - a[1].kgFreschi)
-                            .map(([forn, data]) => html`
-                                <div class="bg-white p-2 rounded border flex justify-between items-center">
-                                    <span class="font-medium">${forn}</span>
-                                    <div class="text-sm text-gray-600">
-                                        <span class="mr-3">${data.count} lavorazioni</span>
-                                        <span>${data.kgFreschi.toFixed(0)} kg</span>
+                                    <div class="bg-blue-50 p-3 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-blue-600">${totKgFreschi.toFixed(0)}</div>
+                                        <div class="text-xs text-gray-600">Kg freschi totali</div>
+                                    </div>
+                                    <div class="bg-purple-50 p-3 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-purple-600">${totKgSecchi.toFixed(1)}</div>
+                                        <div class="text-xs text-gray-600">Kg secchi totali</div>
+                                    </div>
+                                    <div class="bg-yellow-50 p-3 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-yellow-600">${resaMedia}%</div>
+                                        <div class="text-xs text-gray-600">Resa media</div>
+                                    </div>
+                                    <div class="bg-orange-50 p-3 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-orange-600">${totOreManodopera.toFixed(1)}</div>
+                                        <div class="text-xs text-gray-600">Ore manodopera</div>
+                                    </div>
+                                    <div class="bg-red-50 p-3 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-red-600">${totOreMacchina.toFixed(1)}</div>
+                                        <div class="text-xs text-gray-600">Ore macchina</div>
                                     </div>
                                 </div>
-                            `)
-                        }
+                                
+                                <!-- Quest'anno -->
+                                <div class="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg mb-4 border border-green-200">
+                                    <h3 class="font-bold text-gray-700 mb-3">📅 Anno ${oggi.getFullYear()}</h3>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div class="text-center">
+                                            <div class="text-xl font-bold text-green-600">${questAnno.length}</div>
+                                            <div class="text-xs text-gray-600">Lavorazioni</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-xl font-bold text-blue-600">${kgAnnoFreschi.toFixed(0)} kg</div>
+                                            <div class="text-xs text-gray-600">Freschi</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-xl font-bold text-orange-600">${oreManodoperaAnno.toFixed(1)} h</div>
+                                            <div class="text-xs text-gray-600">Manodopera</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-xl font-bold text-red-600">${oreMacchinaAnno.toFixed(1)} h</div>
+                                            <div class="text-xs text-gray-600">Macchina</div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 pt-3 border-t border-green-200 flex justify-between text-sm">
+                                        <span>Kg secchi: <strong>${kgAnnoSecchi.toFixed(1)}</strong></span>
+                                        <span>Resa media: <strong class="text-green-600">${resaAnno}%</strong></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Questo mese -->
+                                <div class="bg-gray-50 p-3 rounded-lg mb-4">
+                                    <h3 class="font-bold text-gray-700 mb-2">📅 Questo mese</h3>
+                                    <div class="flex gap-4">
+                                        <span class="text-sm"><strong>${questoMese.length}</strong> lavorazioni</span>
+                                        <span class="text-sm"><strong>${kgMese.toFixed(0)}</strong> kg freschi</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Per Prodotto -->
+                                <div class="mb-4">
+                                    <h3 class="font-bold text-gray-700 mb-2">🥕 Per Prodotto</h3>
+                                    <div class="space-y-2">
+                                        ${Object.entries(perProdotto)
+                                            .sort((a, b) => b[1].kgFreschi - a[1].kgFreschi)
+                                            .map(([prod, data]) => {
+                                                const resa = data.kgFreschi > 0 ? ((data.kgSecchi / data.kgFreschi) * 100).toFixed(1) : 0;
+                                                return html`
+                                                    <div class="bg-white p-2 rounded border flex justify-between items-center">
+                                                        <span class="font-medium">${prod}</span>
+                                                        <div class="text-sm text-gray-600">
+                                                            <span class="mr-3">${data.count}x</span>
+                                                            <span class="mr-3">${data.kgFreschi.toFixed(0)} kg</span>
+                                                            <span class="text-green-600">resa ${resa}%</span>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            })
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <!-- Per Fornitore -->
+                                <div>
+                                    <h3 class="font-bold text-gray-700 mb-2">🏪 Per Fornitore</h3>
+                                    <div class="space-y-2">
+                                        ${Object.entries(perFornitore)
+                                            .sort((a, b) => b[1].kgFreschi - a[1].kgFreschi)
+                                            .map(([forn, data]) => html`
+                                                <div class="bg-white p-2 rounded border flex justify-between items-center">
+                                                    <span class="font-medium">${forn}</span>
+                                                    <div class="text-sm text-gray-600">
+                                                        <span class="mr-3">${data.count} lavorazioni</span>
+                                                        <span>${data.kgFreschi.toFixed(0)} kg</span>
+                                                    </div>
+                                                </div>
+                                            `)
+                                        }
+                                    </div>
+                                </div>
+                            `;
+                        })()}
                     </div>
-                </div>
-            `;
-        })()}
-    </div>
-`}
+                `}
+
                 <!-- Lavorazione corrente -->
                 ${currentLavorazione && html`
                     <div class="bg-white rounded-lg shadow-lg p-4 mb-4 border-2 border-blue-500">
@@ -562,20 +601,44 @@ setCurrentLavorazione(null);
                         </div>
 
                         ${!currentLavorazione.completata && html`
-                            <div class="mb-4 flex gap-2">
-                                <input
-                                    type="number"
-                                    value=${kgSecco}
-                                    onInput=${(e) => setKgSecco(e.target.value)}
-                                    placeholder="Kg secco"
-                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                                />
+                            <div class="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                                <h3 class="font-bold text-amber-800 mb-2">📦 Completa e Crea Lotto</h3>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kg Secco *</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value=${kgSecco}
+                                            onInput=${(e) => setKgSecco(e.target.value)}
+                                            placeholder="Kg prodotto secco"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                                        <select
+                                            value=${categoriaLotto}
+                                            onChange=${(e) => setCategoriaLotto(e.target.value)}
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                        >
+                                            <option value="frutta">🍎 Frutta</option>
+                                            <option value="verdura">🥕 Verdura</option>
+                                            <option value="erbe">🌿 Erbe</option>
+                                            <option value="funghi">🍄 Funghi</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <button
                                     onClick=${completaLavorazione}
-                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap"
+                                    disabled=${creatingLotto}
+                                    class="mt-3 w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium"
                                 >
-                                    ✅ Completa
+                                    ${creatingLotto ? '⏳ Creazione lotto...' : '✅ Completa e Crea Lotto'}
                                 </button>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    Il lotto verrà creato automaticamente nel foglio "Gestione Lotti"
+                                </p>
                             </div>
                         `}
 
@@ -631,10 +694,10 @@ setCurrentLavorazione(null);
                                             `}
                                             ${att.pulizie && Object.values(att.pulizie).some(v => v) && html`
                                                 <div class="mt-1 flex flex-wrap gap-1">
-                                                    ${att.pulizie.pianoLavoro && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Piano</span>`}
-                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Tagliaverdure</span>`}
-                                                    ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopato Pavimento</span>`}
-                                                    ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavato Pavimento</span>`}
+                                                    ${att.pulizie.pianoLavoro && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Piano lavoro</span>`}
+                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Teglie</span>`}
+                                                    ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopato pavimento</span>`}
+                                                    ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavaggio pavimento</span>`}
                                                     ${att.pulizie.disidratatore && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Disidratatore</span>`}
                                                     ${att.pulizie.ceste && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Ceste</span>`}
                                                     ${att.pulizie.retine && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Retine</span>`}
@@ -735,10 +798,10 @@ setCurrentLavorazione(null);
                                         <h4 class="font-medium text-gray-700 mb-2 text-sm">🧹 Pulizie</h4>
                                         <div class="grid grid-cols-2 gap-2">
                                             ${Object.entries({
-                                                pianoLavoro: 'Piano',
-                                                tagliaverdure: 'Tagliaverdure',
-                                                scopatoPavimento: 'Scopato Pavimento',
-                                                lavatoPavimento: 'Lavato Pavimento',
+                                                pianoLavoro: 'Piano lavoro',
+                                                tagliaverdure: 'Teglie',
+                                                scopatoPavimento: 'Scopato pavimento',
+                                                lavatoPavimento: 'Lavaggio pavimento',
                                                 disidratatore: 'Disidratatore',
                                                 ceste: 'Ceste',
                                                 retine: 'Retine'
