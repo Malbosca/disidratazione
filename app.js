@@ -216,6 +216,16 @@ function App() {
         noteNonConformita: '',
         operatore: 'Emanuele Visigalli'
     });
+    
+    // Settimana per report HACCP (default: settimana corrente)
+    const getSettimanaCorrente = () => {
+        const oggi = new Date();
+        const giorno = oggi.getDay();
+        const diff = oggi.getDate() - giorno + (giorno === 0 ? -6 : 1);
+        const lunedi = new Date(oggi.setDate(diff));
+        return lunedi.toISOString().split('T')[0];
+    };
+    const [settimanaHACCP, setSettimanaHACCP] = useState(getSettimanaCorrente());
 
     const [formData, setFormData] = useState({
         prodotto: '',
@@ -298,6 +308,216 @@ function App() {
         } else {
             alert('❌ Errore salvataggio');
         }
+    };
+
+    const generaReportHACCP = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'mm', 'a4');
+        
+        // Calcola date settimana
+        const inizioSettimana = new Date(settimanaHACCP);
+        const fineSettimana = new Date(inizioSettimana);
+        fineSettimana.setDate(fineSettimana.getDate() + 6);
+        
+        const formatDateIT = (d) => {
+            return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+        };
+        
+        // Titolo
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SCHEDA PULIZIA LOCALI SETTIMANALE', 148.5, 15, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Settimana dal ${formatDateIT(inizioSettimana)} al ${formatDateIT(fineSettimana)}`, 148.5, 22, { align: 'center' });
+        doc.text('Operatore: Emanuele Visigalli', 148.5, 28, { align: 'center' });
+        
+        // Raccogli dati per ogni giorno della settimana
+        const giorniSettimana = [];
+        for (let i = 0; i < 7; i++) {
+            const giorno = new Date(inizioSettimana);
+            giorno.setDate(giorno.getDate() + i);
+            const giornoStr = giorno.toISOString().split('T')[0];
+            
+            // Pulizie giornaliere dalle attività
+            const pulizieGiornaliere = {
+                pianoLavoro: false,
+                lavello: false,
+                tagliaverdure: false,
+                scopatoPavimento: false,
+                lavatoPavimento: false,
+                disidratatore: false,
+                ceste: false,
+                retine: false
+            };
+            
+            lavorazioni.forEach(lav => {
+                lav.attivita.forEach(att => {
+                    if (att.data === giornoStr && att.pulizie) {
+                        if (att.pulizie.pianoLavoro) pulizieGiornaliere.pianoLavoro = true;
+                        if (att.pulizie.lavello) pulizieGiornaliere.lavello = true;
+                        if (att.pulizie.tagliaverdure) pulizieGiornaliere.tagliaverdure = true;
+                        if (att.pulizie.scopatoPavimento) pulizieGiornaliere.scopatoPavimento = true;
+                        if (att.pulizie.lavatoPavimento) pulizieGiornaliere.lavatoPavimento = true;
+                        if (att.pulizie.disidratatore) pulizieGiornaliere.disidratatore = true;
+                        if (att.pulizie.ceste) pulizieGiornaliere.ceste = true;
+                        if (att.pulizie.retine) pulizieGiornaliere.retine = true;
+                    }
+                });
+            });
+            
+            // Pulizie HACCP approfondite
+            const puliziaHACCP = pulizieHACCP.find(p => p.data === giornoStr);
+            
+            giorniSettimana.push({
+                data: formatDateIT(giorno),
+                giornoNome: ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][giorno.getDay()],
+                ...pulizieGiornaliere,
+                // HACCP
+                ragnatele: puliziaHACCP?.controlloRagnatele || false,
+                prodotto: puliziaHACCP?.prodottoUtilizzato || '',
+                locale: puliziaHACCP?.locale || '',
+                esito: puliziaHACCP?.esito || '',
+                note: puliziaHACCP?.noteNonConformita || ''
+            });
+        }
+        
+        // Simboli
+        const check = '✓';
+        const empty = '';
+        
+        // Tabella pulizie giornaliere
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PULIZIE GIORNALIERE (durante lavorazioni)', 14, 38);
+        
+        const headersGiornaliere = [
+            ['Data', 'Giorno', 'Piano\nlavoro', 'Lavello', 'Taglia-\nverdure', 'Scopatura\npavimento', 'Lavaggio\npavimento', 'Disidra-\ntatore', 'Ceste', 'Retine']
+        ];
+        
+        const bodyGiornaliere = giorniSettimana.map(g => [
+            g.data,
+            g.giornoNome,
+            g.pianoLavoro ? check : empty,
+            g.lavello ? check : empty,
+            g.tagliaverdure ? check : empty,
+            g.scopatoPavimento ? check : empty,
+            g.lavatoPavimento ? check : empty,
+            g.disidratatore ? check : empty,
+            g.ceste ? check : empty,
+            g.retine ? check : empty
+        ]);
+        
+        doc.autoTable({
+            startY: 42,
+            head: headersGiornaliere,
+            body: bodyGiornaliere,
+            theme: 'grid',
+            headStyles: { 
+                fillColor: [22, 163, 74], 
+                fontSize: 8,
+                halign: 'center',
+                valign: 'middle'
+            },
+            bodyStyles: { 
+                fontSize: 9,
+                halign: 'center',
+                valign: 'middle'
+            },
+            columnStyles: {
+                0: { cellWidth: 22 },
+                1: { cellWidth: 18 },
+                2: { cellWidth: 22 },
+                3: { cellWidth: 22 },
+                4: { cellWidth: 22 },
+                5: { cellWidth: 25 },
+                6: { cellWidth: 25 },
+                7: { cellWidth: 22 },
+                8: { cellWidth: 22 },
+                9: { cellWidth: 22 }
+            }
+        });
+        
+        // Tabella pulizie approfondite HACCP
+        const yAfterFirst = doc.lastAutoTable.finalY + 10;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('PULIZIE APPROFONDITE HACCP', 14, yAfterFirst);
+        
+        const headersHACCP = [
+            ['Data', 'Giorno', 'Locale', 'Spazzatura\npavimento', 'Lavaggio\ndetergente', 'Controllo\nragnatele', 'Prodotto\nutilizzato', 'Angoli/\nScaffali', 'Esito', 'Note']
+        ];
+        
+        const bodyHACCP = giorniSettimana.map(g => {
+            const puliziaHACCP = pulizieHACCP.find(p => {
+                const pData = new Date(p.data);
+                const gData = g.data.split('/').reverse().join('-');
+                return p.data === gData;
+            });
+            
+            return [
+                g.data,
+                g.giornoNome,
+                puliziaHACCP?.locale || '-',
+                puliziaHACCP?.spazzaturaPavimento ? check : empty,
+                puliziaHACCP?.lavaggioPavimentoDetergente ? check : empty,
+                puliziaHACCP?.controlloRagnatele ? check : empty,
+                puliziaHACCP?.prodottoUtilizzato || '-',
+                puliziaHACCP?.angoliScaffali || '-',
+                puliziaHACCP?.esito || '-',
+                puliziaHACCP?.noteNonConformita || ''
+            ];
+        });
+        
+        doc.autoTable({
+            startY: yAfterFirst + 4,
+            head: headersHACCP,
+            body: bodyHACCP,
+            theme: 'grid',
+            headStyles: { 
+                fillColor: [217, 119, 6], 
+                fontSize: 8,
+                halign: 'center',
+                valign: 'middle'
+            },
+            bodyStyles: { 
+                fontSize: 8,
+                halign: 'center',
+                valign: 'middle'
+            },
+            columnStyles: {
+                0: { cellWidth: 22 },
+                1: { cellWidth: 18 },
+                2: { cellWidth: 25 },
+                3: { cellWidth: 22 },
+                4: { cellWidth: 22 },
+                5: { cellWidth: 22 },
+                6: { cellWidth: 35 },
+                7: { cellWidth: 22 },
+                8: { cellWidth: 22 },
+                9: { cellWidth: 35 }
+            }
+        });
+        
+        // Footer con firme
+        const yFinal = doc.lastAutoTable.finalY + 15;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Firma Operatore: _______________________', 30, yFinal);
+        doc.text('Firma Responsabile: _______________________', 170, yFinal);
+        doc.text(`Data verifica: ____/____/________`, 100, yFinal + 10);
+        
+        // Legenda
+        doc.setFontSize(8);
+        doc.text(`${check} = Operazione effettuata`, 14, yFinal + 20);
+        
+        // Salva PDF
+        const nomeFile = `HACCP_Pulizie_${formatDateIT(inizioSettimana).replace(/\//g, '-')}_${formatDateIT(fineSettimana).replace(/\//g, '-')}.pdf`;
+        doc.save(nomeFile);
+        
+        alert(`✅ Report PDF generato!\n\nFile: ${nomeFile}`);
     };
 
     const avviaNuovaLavorazione = async () => {
@@ -728,6 +948,36 @@ function App() {
                 ${showReport && html`
                     <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
                         <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Report e Statistiche</h2>
+                        
+                        <!-- Report HACCP PDF -->
+                        <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6">
+                            <h3 class="font-bold text-amber-800 mb-3">🧹 Report Pulizie HACCP Settimanale</h3>
+                            <div class="flex flex-col sm:flex-row gap-3 items-end">
+                                <div class="flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Seleziona settimana (lunedì)</label>
+                                    <input
+                                        type="date"
+                                        value=${settimanaHACCP}
+                                        onInput=${(e) => setSettimanaHACCP(e.target.value)}
+                                        class="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm"
+                                    />
+                                </div>
+                                <button
+                                    onClick=${generaReportHACCP}
+                                    class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
+                                >
+                                    📄 Genera PDF
+                                </button>
+                            </div>
+                            <p class="text-xs text-amber-700 mt-2">
+                                Il report include pulizie giornaliere e approfondite dal ${(() => {
+                                    const inizio = new Date(settimanaHACCP);
+                                    const fine = new Date(inizio);
+                                    fine.setDate(fine.getDate() + 6);
+                                    return `${inizio.toLocaleDateString('it-IT')} al ${fine.toLocaleDateString('it-IT')}`;
+                                })()}
+                            </p>
+                        </div>
                         
                         ${(() => {
                             const completate = lavorazioni.filter(l => l.completata);
