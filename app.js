@@ -25,6 +25,50 @@ const calcolaOreMacchina = (oraAccensione, oraSpegnimento) => {
     return minuti / 60;
 };
 
+// Calcola ore disidratatore considerando accensione/spegnimento in giorni diversi
+const calcolaOreDisidratatore = (attivita, tipo) => {
+    // tipo = '40' o '100'
+    const accensioneKey = `oraAccensione${tipo}`;
+    const spegnimentoKey = `oraSpegnimento${tipo}`;
+    
+    // Raccogli tutti gli eventi con date
+    const eventi = [];
+    attivita.forEach(att => {
+        if (att[accensioneKey]) {
+            eventi.push({
+                tipo: 'accensione',
+                timestamp: new Date(`${att.data}T${att[accensioneKey]}`).getTime()
+            });
+        }
+        if (att[spegnimentoKey]) {
+            eventi.push({
+                tipo: 'spegnimento',
+                timestamp: new Date(`${att.data}T${att[spegnimentoKey]}`).getTime()
+            });
+        }
+    });
+    
+    // Ordina per timestamp
+    eventi.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Calcola ore totali: ogni accensione deve essere seguita da uno spegnimento
+    let oreTotali = 0;
+    let ultimaAccensione = null;
+    
+    for (const evento of eventi) {
+        if (evento.tipo === 'accensione') {
+            ultimaAccensione = evento.timestamp;
+        } else if (evento.tipo === 'spegnimento' && ultimaAccensione !== null) {
+            const diffMs = evento.timestamp - ultimaAccensione;
+            const diffOre = diffMs / (1000 * 60 * 60);
+            oreTotali += diffOre;
+            ultimaAccensione = null;
+        }
+    }
+    
+    return oreTotali;
+};
+
 const formatOre = (ore) => {
     return ore.toFixed(2) + ' h';
 };
@@ -350,15 +394,14 @@ function App() {
         setCreatingLotto(true);
 
         let oreManooperaTotali = 0;
-        let oreDisidratatore40 = 0;
-        let oreDisidratatore100 = 0;
-
+        
         currentLavorazione.attivita.forEach(att => {
             oreManooperaTotali += calcolaOreManodopera(att.oraInizioLavoro, att.oraFineLavoro, att.numeroPersone);
-            oreDisidratatore40 += calcolaOreMacchina(att.oraAccensione40, att.oraSpegnimento40);
-            oreDisidratatore100 += calcolaOreMacchina(att.oraAccensione100, att.oraSpegnimento100);
         });
 
+        // Calcola ore disidratatore considerando accensione/spegnimento in giorni diversi
+        const oreDisidratatore40 = calcolaOreDisidratatore(currentLavorazione.attivita, '40');
+        const oreDisidratatore100 = calcolaOreDisidratatore(currentLavorazione.attivita, '100');
         const oreMacchinaTotali = oreDisidratatore40 + oreDisidratatore100;
 
         const lavorazioneCompletata = {
