@@ -429,6 +429,14 @@ setCurrentLavorazione(null);
             const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
             const questoMese = completate.filter(l => new Date(l.dataInizio) >= inizioMese);
             const kgMese = questoMese.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+            // Quest'anno
+            const inizioAnno = new Date(oggi.getFullYear(), 0, 1);
+            const questAnno = completate.filter(l => new Date(l.dataInizio) >= inizioAnno);
+            const kgAnnoFreschi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+            const kgAnnoSecchi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
+            const oreManodoperaAnno = questAnno.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
+            const oreMacchinaAnno = questAnno.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
+            const resaAnno = kgAnnoFreschi > 0 ? ((kgAnnoSecchi / kgAnnoFreschi) * 100).toFixed(1) : 0;
             
             return html`
                 <!-- Statistiche Generali -->
@@ -459,14 +467,41 @@ setCurrentLavorazione(null);
                     </div>
                 </div>
                 
-                <!-- Questo mese -->
-                <div class="bg-gray-50 p-3 rounded-lg mb-4">
-                    <h3 class="font-bold text-gray-700 mb-2">📅 Questo mese</h3>
-                    <div class="flex gap-4">
-                        <span class="text-sm"><strong>${questoMese.length}</strong> lavorazioni</span>
-                        <span class="text-sm"><strong>${kgMese.toFixed(0)}</strong> kg freschi</span>
-                    </div>
-                </div>
+            <!-- Quest'anno -->
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg mb-4 border border-green-200">
+            <h3 class="font-bold text-gray-700 mb-3">📅 Anno ${oggi.getFullYear()}</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="text-center">
+            <div class="text-xl font-bold text-green-600">${questAnno.length}</div>
+            <div class="text-xs text-gray-600">Lavorazioni</div>
+            </div>
+            <div class="text-center">
+            <div class="text-xl font-bold text-blue-600">${kgAnnoFreschi.toFixed(0)} kg</div>
+            <div class="text-xs text-gray-600">Freschi</div>
+            </div>
+            <div class="text-center">
+            <div class="text-xl font-bold text-orange-600">${oreManodoperaAnno.toFixed(1)} h</div>
+            <div class="text-xs text-gray-600">Manodopera</div>
+            </div>
+            <div class="text-center">
+            <div class="text-xl font-bold text-red-600">${oreMacchinaAnno.toFixed(1)} h</div>
+            <div class="text-xs text-gray-600">Macchina</div>
+        </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-green-200 flex justify-between text-sm">
+        <span>Kg secchi: <strong>${kgAnnoSecchi.toFixed(1)}</strong></span>
+        <span>Resa media: <strong class="text-green-600">${resaAnno}%</strong></span>
+    </div>
+</div>
+
+    <!-- Questo mese -->
+    <div class="bg-gray-50 p-3 rounded-lg mb-4">
+    <h3 class="font-bold text-gray-700 mb-2">📅 Questo mese</h3>
+    <div class="flex gap-4">
+        <span class="text-sm"><strong>${questoMese.length}</strong> lavorazioni</span>
+        <span class="text-sm"><strong>${kgMese.toFixed(0)}</strong> kg freschi</span>
+    </div>
+</div>
                 
                 <!-- Per Prodotto -->
                 <div class="mb-4">
