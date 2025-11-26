@@ -133,6 +133,7 @@ function App() {
     });
 
     const [kgSecco, setKgSecco] = useState('');
+    const [showReport, setShowReport] = useState(false);
 
     useEffect(() => {
         caricaDati();
@@ -319,14 +320,20 @@ setCurrentLavorazione(null);
                     </div>
                 </div>
 
-                <!-- Pulsante Nuova Lavorazione -->
-                <div class="mb-4">
-                    <button
-                        onClick=${() => setShowForm(!showForm)}
-                        class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
-                    >
-                        ${showForm ? '❌ Chiudi' : '➕ Nuova Lavorazione'}
-                    </button>
+               <!-- Pulsanti Azione -->
+                <div class="mb-4 flex gap-3 flex-wrap">
+                <button
+                onClick=${() => { setShowForm(!showForm); setShowReport(false); }}
+                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
+                >
+                ${showForm ? '❌ Chiudi' : '➕ Nuova Lavorazione'}
+                </button>
+                <button
+                onClick=${() => { setShowReport(!showReport); setShowForm(false); }}
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
+                >
+                ${showReport ? '❌ Chiudi' : '📊 Report'}
+                </button>
                 </div>
 
                 <!-- Form nuova lavorazione -->
@@ -382,7 +389,130 @@ setCurrentLavorazione(null);
                         </button>
                     </div>
                 `}
-
+                 ${showReport && html`
+    <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Report e Statistiche</h2>
+        
+        ${(() => {
+            const completate = lavorazioni.filter(l => l.completata);
+            const totKgFreschi = completate.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+            const totKgSecchi = completate.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
+            const totOreManodopera = completate.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
+            const totOreMacchina = completate.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
+            const resaMedia = totKgFreschi > 0 ? ((totKgSecchi / totKgFreschi) * 100).toFixed(1) : 0;
+            
+            // Statistiche per prodotto
+            const perProdotto = {};
+            completate.forEach(l => {
+                const prod = l.prodotto || 'Sconosciuto';
+                if (!perProdotto[prod]) {
+                    perProdotto[prod] = { kgFreschi: 0, kgSecchi: 0, count: 0 };
+                }
+                perProdotto[prod].kgFreschi += parseFloat(l.kgAcquistati) || 0;
+                perProdotto[prod].kgSecchi += parseFloat(l.kgSecco) || 0;
+                perProdotto[prod].count += 1;
+            });
+            
+            // Statistiche per fornitore
+            const perFornitore = {};
+            completate.forEach(l => {
+                const forn = l.fornitore || 'Sconosciuto';
+                if (!perFornitore[forn]) {
+                    perFornitore[forn] = { kgFreschi: 0, count: 0 };
+                }
+                perFornitore[forn].kgFreschi += parseFloat(l.kgAcquistati) || 0;
+                perFornitore[forn].count += 1;
+            });
+            
+            // Questo mese
+            const oggi = new Date();
+            const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+            const questoMese = completate.filter(l => new Date(l.dataInizio) >= inizioMese);
+            const kgMese = questoMese.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+            
+            return html`
+                <!-- Statistiche Generali -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                    <div class="bg-green-50 p-3 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-green-600">${completate.length}</div>
+                        <div class="text-xs text-gray-600">Lavorazioni completate</div>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-blue-600">${totKgFreschi.toFixed(0)}</div>
+                        <div class="text-xs text-gray-600">Kg freschi totali</div>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-purple-600">${totKgSecchi.toFixed(1)}</div>
+                        <div class="text-xs text-gray-600">Kg secchi totali</div>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-yellow-600">${resaMedia}%</div>
+                        <div class="text-xs text-gray-600">Resa media</div>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-orange-600">${totOreManodopera.toFixed(1)}</div>
+                        <div class="text-xs text-gray-600">Ore manodopera</div>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-red-600">${totOreMacchina.toFixed(1)}</div>
+                        <div class="text-xs text-gray-600">Ore macchina</div>
+                    </div>
+                </div>
+                
+                <!-- Questo mese -->
+                <div class="bg-gray-50 p-3 rounded-lg mb-4">
+                    <h3 class="font-bold text-gray-700 mb-2">📅 Questo mese</h3>
+                    <div class="flex gap-4">
+                        <span class="text-sm"><strong>${questoMese.length}</strong> lavorazioni</span>
+                        <span class="text-sm"><strong>${kgMese.toFixed(0)}</strong> kg freschi</span>
+                    </div>
+                </div>
+                
+                <!-- Per Prodotto -->
+                <div class="mb-4">
+                    <h3 class="font-bold text-gray-700 mb-2">🥕 Per Prodotto</h3>
+                    <div class="space-y-2">
+                        ${Object.entries(perProdotto)
+                            .sort((a, b) => b[1].kgFreschi - a[1].kgFreschi)
+                            .map(([prod, data]) => {
+                                const resa = data.kgFreschi > 0 ? ((data.kgSecchi / data.kgFreschi) * 100).toFixed(1) : 0;
+                                return html`
+                                    <div class="bg-white p-2 rounded border flex justify-between items-center">
+                                        <span class="font-medium">${prod}</span>
+                                        <div class="text-sm text-gray-600">
+                                            <span class="mr-3">${data.count}x</span>
+                                            <span class="mr-3">${data.kgFreschi.toFixed(0)} kg</span>
+                                            <span class="text-green-600">resa ${resa}%</span>
+                                        </div>
+                                    </div>
+                                `;
+                            })
+                        }
+                    </div>
+                </div>
+                
+                <!-- Per Fornitore -->
+                <div>
+                    <h3 class="font-bold text-gray-700 mb-2">🏪 Per Fornitore</h3>
+                    <div class="space-y-2">
+                        ${Object.entries(perFornitore)
+                            .sort((a, b) => b[1].kgFreschi - a[1].kgFreschi)
+                            .map(([forn, data]) => html`
+                                <div class="bg-white p-2 rounded border flex justify-between items-center">
+                                    <span class="font-medium">${forn}</span>
+                                    <div class="text-sm text-gray-600">
+                                        <span class="mr-3">${data.count} lavorazioni</span>
+                                        <span>${data.kgFreschi.toFixed(0)} kg</span>
+                                    </div>
+                                </div>
+                            `)
+                        }
+                    </div>
+                </div>
+            `;
+        })()}
+    </div>
+`}
                 <!-- Lavorazione corrente -->
                 ${currentLavorazione && html`
                     <div class="bg-white rounded-lg shadow-lg p-4 mb-4 border-2 border-blue-500">
