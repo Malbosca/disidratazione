@@ -384,7 +384,7 @@ function App() {
         }
         
         // Simboli
-        const check = '✓';
+        const check = 'X';
         const empty = '';
         
         // Tabella pulizie giornaliere
@@ -421,13 +421,14 @@ function App() {
                 valign: 'middle'
             },
             bodyStyles: { 
-                fontSize: 9,
+                fontSize: 11,
                 halign: 'center',
-                valign: 'middle'
+                valign: 'middle',
+                fontStyle: 'bold'
             },
             columnStyles: {
-                0: { cellWidth: 22 },
-                1: { cellWidth: 18 },
+                0: { cellWidth: 22, fontStyle: 'normal', fontSize: 9 },
+                1: { cellWidth: 18, fontStyle: 'normal', fontSize: 9 },
                 2: { cellWidth: 22 },
                 3: { cellWidth: 22 },
                 4: { cellWidth: 22 },
@@ -482,7 +483,7 @@ function App() {
                 valign: 'middle'
             },
             bodyStyles: { 
-                fontSize: 8,
+                fontSize: 9,
                 halign: 'center',
                 valign: 'middle'
             },
@@ -490,9 +491,9 @@ function App() {
                 0: { cellWidth: 22 },
                 1: { cellWidth: 18 },
                 2: { cellWidth: 25 },
-                3: { cellWidth: 22 },
-                4: { cellWidth: 22 },
-                5: { cellWidth: 22 },
+                3: { cellWidth: 22, fontStyle: 'bold', fontSize: 11 },
+                4: { cellWidth: 22, fontStyle: 'bold', fontSize: 11 },
+                5: { cellWidth: 22, fontStyle: 'bold', fontSize: 11 },
                 6: { cellWidth: 35 },
                 7: { cellWidth: 22 },
                 8: { cellWidth: 22 },
@@ -507,11 +508,11 @@ function App() {
         doc.setFont('helvetica', 'normal');
         doc.text('Firma Operatore: _______________________', 30, yFinal);
         doc.text('Firma Responsabile: _______________________', 170, yFinal);
-        doc.text(`Data verifica: ____/____/________`, 100, yFinal + 10);
+        doc.text('Data verifica: ____/____/________', 100, yFinal + 10);
         
         // Legenda
-        doc.setFontSize(8);
-        doc.text(`${check} = Operazione effettuata`, 14, yFinal + 20);
+        doc.setFontSize(9);
+        doc.text('X = Operazione effettuata', 14, yFinal + 20);
         
         // Salva PDF
         const nomeFile = `HACCP_Pulizie_${formatDateIT(inizioSettimana).replace(/\//g, '-')}_${formatDateIT(fineSettimana).replace(/\//g, '-')}.pdf`;
