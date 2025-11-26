@@ -337,41 +337,39 @@ function App() {
         <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 pb-20">
             <div class="max-w-7xl mx-auto">
                 <!-- Header -->
-                <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
-                    <div class="flex justify-between items-start">
+                <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <h1 class="text-2xl md:text-3xl font-bold text-green-800 mb-2">
-                                🥕 Gestione Disidratazione
+                            <h1 class="text-xl md:text-2xl font-bold text-green-800">
+                                🥕 Disidratazione
                             </h1>
-                            <p class="text-sm text-gray-600">Tracciamento lavorazioni</p>
+                            <p class="text-xs text-gray-500">Tracciamento lavorazioni</p>
                         </div>
-                        <div class="text-right">
-                            ${online ? html`
-                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
-                                    ✓ Online
-                                </span>
-                            ` : html`
-                                <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">
-                                    ✗ Offline
-                                </span>
-                            `}
-                        </div>
+                        ${online ? html`
+                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                                ● Online
+                            </span>
+                        ` : html`
+                            <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
+                                ● Offline
+                            </span>
+                        `}
                     </div>
                 </div>
 
                 <!-- Pulsanti Azione -->
-                <div class="mb-4 flex gap-3 flex-wrap">
+                <div class="grid grid-cols-2 gap-3 mb-4">
                     <button
                         onClick=${() => { setShowForm(!showForm); setShowReport(false); }}
-                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
+                        class="${`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium shadow-md transition-all ${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white`}"
                     >
-                        ${showForm ? '❌ Chiudi' : '➕ Nuova Lavorazione'}
+                        ${showForm ? '✕ Chiudi' : '➕ Nuova'}
                     </button>
                     <button
                         onClick=${() => { setShowReport(!showReport); setShowForm(false); }}
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-md transition-colors"
+                        class="${`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium shadow-md transition-all ${showReport ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white`}"
                     >
-                        ${showReport ? '❌ Chiudi' : '📊 Report'}
+                        ${showReport ? '✕ Chiudi' : '📊 Report'}
                     </button>
                 </div>
 
@@ -695,7 +693,7 @@ function App() {
                                             ${att.pulizie && Object.values(att.pulizie).some(v => v) && html`
                                                 <div class="mt-1 flex flex-wrap gap-1">
                                                     ${att.pulizie.pianoLavoro && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Piano lavoro</span>`}
-                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Tagliaverdure</span>`}
+                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Teglie</span>`}
                                                     ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopato pavimento</span>`}
                                                     ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavaggio pavimento</span>`}
                                                     ${att.pulizie.disidratatore && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Disidratatore</span>`}
@@ -799,7 +797,7 @@ function App() {
                                         <div class="grid grid-cols-2 gap-2">
                                             ${Object.entries({
                                                 pianoLavoro: 'Piano lavoro',
-                                                tagliaverdure: 'Tagliaverdure',
+                                                tagliaverdure: 'Teglie',
                                                 scopatoPavimento: 'Scopato pavimento',
                                                 lavatoPavimento: 'Lavaggio pavimento',
                                                 disidratatore: 'Disidratatore',
@@ -856,45 +854,66 @@ function App() {
                             ${lavorazioni
                                 .sort((a, b) => new Date(b.dataInizio) - new Date(a.dataInizio))
                                 .map(lav => html`
-                                <div class="${`border rounded-lg p-3 ${lav.completata ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <h3 class="font-bold text-gray-800">${lav.prodotto}</h3>
-                                                <span class="${`px-2 py-0.5 rounded text-xs font-medium ${lav.completata ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}">
-                                                    ${lav.completata ? '✅' : '⏳'}
+                                <div class="${`border rounded-xl overflow-hidden ${lav.completata ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}">
+                                    <!-- Header card -->
+                                    <div class="p-3 pb-2">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h3 class="font-bold text-gray-800 text-base">${lav.prodotto}</h3>
+                                            <span class="${`px-2 py-1 rounded-full text-xs font-medium ${lav.completata ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}">
+                                                ${lav.completata ? '✅ Completata' : '⏳ In corso'}
+                                            </span>
+                                        </div>
+                                        
+                                        <!-- Info grid -->
+                                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-2">
+                                            <div class="text-gray-600">
+                                                <span class="text-gray-400">📦</span> ${lav.kgAcquistati} kg freschi
+                                            </div>
+                                            <div class="text-gray-600">
+                                                <span class="text-gray-400">🏪</span> ${lav.fornitore}
+                                            </div>
+                                            <div class="text-gray-600">
+                                                <span class="text-gray-400">📅</span> ${new Date(lav.dataInizio).toLocaleDateString('it-IT')}
+                                            </div>
+                                            <div class="text-gray-600">
+                                                <span class="text-gray-400">📝</span> ${lav.attivita.length} ${lav.attivita.length === 1 ? 'giorno' : 'giorni'}
+                                            </div>
+                                        </div>
+                                        
+                                        ${lav.completata && html`
+                                            <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-green-200">
+                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-orange-600">
+                                                    🥕 ${lav.kgSecco} kg secco
+                                                </span>
+                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-blue-600">
+                                                    👷 ${formatOre(lav.oreManooperaTotali)}
+                                                </span>
+                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-purple-600">
+                                                    ⚙️ ${formatOre(lav.oreMacchinaTotali)}
+                                                </span>
+                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-green-600">
+                                                    📊 ${((parseFloat(lav.kgSecco) / parseFloat(lav.kgAcquistati)) * 100).toFixed(1)}% resa
                                                 </span>
                                             </div>
-                                            <p class="text-sm text-gray-600">
-                                                ${lav.kgAcquistati} kg - ${lav.fornitore}
-                                                ${lav.completata && lav.kgSecco ? ` → ${lav.kgSecco} kg` : ''}
-                                            </p>
-                                            <p class="text-xs text-gray-500">
-                                                ${new Date(lav.dataInizio).toLocaleDateString('it-IT')} | ${lav.attivita.length} gg
-                                            </p>
-                                            ${lav.completata && html`
-                                                <div class="flex gap-3 mt-1 text-xs">
-                                                    <span class="text-blue-600">👷 ${formatOre(lav.oreManooperaTotali)}</span>
-                                                    <span class="text-purple-600">⚙️ ${formatOre(lav.oreMacchinaTotali)}</span>
-                                                </div>
-                                            `}
-                                        </div>
-                                        <div class="flex gap-2">
-                                            ${currentLavorazione?.id !== lav.id && html`
-                                                <button
-                                                    onClick=${() => riprendiLavorazione(lav)}
-                                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
-                                                >
-                                                    ${lav.completata ? '👁️' : '📝'}
-                                                </button>
-                                            `}
+                                        `}
+                                    </div>
+                                    
+                                    <!-- Footer con pulsanti -->
+                                    <div class="${`flex justify-end gap-2 p-2 ${lav.completata ? 'bg-green-100' : 'bg-yellow-100'}`}">
+                                        ${currentLavorazione?.id !== lav.id && html`
                                             <button
-                                                onClick=${() => eliminaLavorazione(lav.id)}
-                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
+                                                onClick=${() => riprendiLavorazione(lav)}
+                                                class="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm"
                                             >
-                                                🗑️
+                                                ${lav.completata ? '👁️ Vedi' : '📝 Modifica'}
                                             </button>
-                                        </div>
+                                        `}
+                                        <button
+                                            onClick=${() => eliminaLavorazione(lav.id)}
+                                            class="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm"
+                                        >
+                                            🗑️ Elimina
+                                        </button>
                                     </div>
                                 </div>
                             `)}
