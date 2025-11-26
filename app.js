@@ -695,7 +695,7 @@ function App() {
                                             ${att.pulizie && Object.values(att.pulizie).some(v => v) && html`
                                                 <div class="mt-1 flex flex-wrap gap-1">
                                                     ${att.pulizie.pianoLavoro && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Piano lavoro</span>`}
-                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Teglie</span>`}
+                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Tagliaverdure</span>`}
                                                     ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopato pavimento</span>`}
                                                     ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavaggio pavimento</span>`}
                                                     ${att.pulizie.disidratatore && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Disidratatore</span>`}
@@ -799,7 +799,7 @@ function App() {
                                         <div class="grid grid-cols-2 gap-2">
                                             ${Object.entries({
                                                 pianoLavoro: 'Piano lavoro',
-                                                tagliaverdure: 'Teglie',
+                                                tagliaverdure: 'Tagliaverdure',
                                                 scopatoPavimento: 'Scopato pavimento',
                                                 lavatoPavimento: 'Lavaggio pavimento',
                                                 disidratatore: 'Disidratatore',
