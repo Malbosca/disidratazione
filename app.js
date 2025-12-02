@@ -1249,6 +1249,33 @@ function App() {
                             </p>
                         </div>
                         
+                        <!-- Invio Email Automatico -->
+                        <div class="bg-blue-50 border border-blue-300 rounded-xl p-4 mb-6">
+                            <h3 class="font-bold text-blue-800 mb-3">📧 Report Email Settimanale</h3>
+                            <p class="text-sm text-blue-700 mb-3">
+                                Ogni <strong>lunedì alle 8:00</strong> riceverai automaticamente il report della settimana precedente a <strong>aziendamalbosca@gmail.com</strong>
+                            </p>
+                            <button
+                                onClick=${async () => {
+                                    if (!confirm('Inviare il report della settimana scorsa via email?')) return;
+                                    try {
+                                        const resp = await fetch(API_BASE + '/invia-report', { method: 'POST' });
+                                        const data = await resp.json();
+                                        if (data.success) {
+                                            alert('✅ ' + data.message + '\\n\\nPulizie trovate: ' + data.pulizieTrovate);
+                                        } else {
+                                            alert('❌ Errore: ' + data.error);
+                                        }
+                                    } catch (err) {
+                                        alert('❌ Errore: ' + err.message);
+                                    }
+                                }}
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
+                            >
+                                📧 Invia Report Settimana Scorsa (Test)
+                            </button>
+                        </div>
+                        
                         ${(() => {
                             const completate = lavorazioni.filter(l => l.completata);
                             
