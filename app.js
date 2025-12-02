@@ -221,6 +221,7 @@ function App() {
         angoliScaffali: 'Puliti',
         esito: 'Conforme',
         noteNonConformita: '',
+        note: '',
         operatore: 'Emanuele Visigalli'
     });
     
@@ -310,6 +311,7 @@ function App() {
                 angoliScaffali: 'Puliti',
                 esito: 'Conforme',
                 noteNonConformita: '',
+                note: '',
                 operatore: 'Emanuele Visigalli'
             });
             setShowPulizie(false);
@@ -413,93 +415,75 @@ function App() {
             theme: 'grid',
             headStyles: { 
                 fillColor: [22, 163, 74], 
-                fontSize: 8,
+                fontSize: 7,
                 halign: 'center',
                 valign: 'middle'
             },
             bodyStyles: { 
-                fontSize: 11,
+                fontSize: 10,
                 halign: 'center',
                 valign: 'middle',
                 fontStyle: 'bold'
             },
             columnStyles: {
-                0: { cellWidth: 22, fontStyle: 'normal', fontSize: 9 },
-                1: { cellWidth: 18, fontStyle: 'normal', fontSize: 9 },
-                2: { cellWidth: 22 },
-                3: { cellWidth: 22 },
-                4: { cellWidth: 22 },
-                5: { cellWidth: 25 },
-                6: { cellWidth: 25 },
-                7: { cellWidth: 22 },
-                8: { cellWidth: 22 },
-                9: { cellWidth: 22 }
+                0: { cellWidth: 20, fontStyle: 'normal', fontSize: 8 },
+                1: { cellWidth: 14, fontStyle: 'normal', fontSize: 8 },
+                2: { cellWidth: 17 },
+                3: { cellWidth: 17 },
+                4: { cellWidth: 17 },
+                5: { cellWidth: 20 },
+                6: { cellWidth: 20 },
+                7: { cellWidth: 17 },
+                8: { cellWidth: 17 },
+                9: { cellWidth: 17 },
+                10: { cellWidth: 20 }
             }
         });
         
-        // Tabella pulizie approfondite HACCP
+        // Tabella dettagli (locale, prodotto, esito, note)
         const yAfterFirst = doc.lastAutoTable.finalY + 10;
         
         doc.setFont('helvetica', 'bold');
-        doc.text('PULIZIE APPROFONDITE HACCP', 14, yAfterFirst);
+        doc.text('DETTAGLI PULIZIE', 14, yAfterFirst);
         
-        const headersHACCP = [
-            ['Data', 'Giorno', 'Locale', 'Spazzatura\npavimento', 'Lavaggio\ndetergente', 'Controllo\nragnatele', 'Prodotto\nutilizzato', 'Angoli/\nScaffali', 'Esito', 'Note']
+        const headersDettagli = [
+            ['Data', 'Giorno', 'Locale', 'Prodotto utilizzato', 'Angoli/Scaffali', 'Esito', 'Note']
         ];
         
-        const bodyHACCP = giorniSettimana.map(g => {
-            const puliziaHACCP = pulizieHACCP.find(p => {
-                const pData = new Date(p.data);
-                const gData = g.data.split('/').reverse().join('-');
-                return p.data === gData;
-            });
-            
-            return [
+        const bodyDettagli = giorniSettimana
+            .filter(g => g.locale || g.prodotto || g.esito || g.note)
+            .map(g => [
                 g.data,
                 g.giornoNome,
-                puliziaHACCP?.locale || '-',
-                puliziaHACCP?.spazzaturaPavimento ? check : empty,
-                puliziaHACCP?.lavaggioPavimentoDetergente ? check : empty,
-                puliziaHACCP?.controlloRagnatele ? check : empty,
-                puliziaHACCP?.prodottoUtilizzato || '-',
-                puliziaHACCP?.angoliScaffali || '-',
-                puliziaHACCP?.esito || '-',
-                puliziaHACCP?.noteNonConformita || ''
-            ];
-        });
+                g.locale || '-',
+                g.prodotto || '-',
+                g.angoli || '-',
+                g.esito || '-',
+                g.note || ''
+            ]);
         
-        doc.autoTable({
-            startY: yAfterFirst + 4,
-            head: headersHACCP,
-            body: bodyHACCP,
-            theme: 'grid',
-            headStyles: { 
-                fillColor: [217, 119, 6], 
-                fontSize: 8,
-                halign: 'center',
-                valign: 'middle'
-            },
-            bodyStyles: { 
-                fontSize: 9,
-                halign: 'center',
-                valign: 'middle'
-            },
-            columnStyles: {
-                0: { cellWidth: 22 },
-                1: { cellWidth: 18 },
-                2: { cellWidth: 25 },
-                3: { cellWidth: 22, fontStyle: 'bold', fontSize: 11 },
-                4: { cellWidth: 22, fontStyle: 'bold', fontSize: 11 },
-                5: { cellWidth: 22, fontStyle: 'bold', fontSize: 11 },
-                6: { cellWidth: 35 },
-                7: { cellWidth: 22 },
-                8: { cellWidth: 22 },
-                9: { cellWidth: 35 }
-            }
-        });
+        if (bodyDettagli.length > 0) {
+            doc.autoTable({
+                startY: yAfterFirst + 4,
+                head: headersDettagli,
+                body: bodyDettagli,
+                theme: 'grid',
+                headStyles: { 
+                    fillColor: [59, 130, 246], 
+                    fontSize: 8,
+                    halign: 'center',
+                    valign: 'middle'
+                },
+                bodyStyles: { 
+                    fontSize: 9,
+                    halign: 'center',
+                    valign: 'middle'
+                }
+            });
+        }
         
         // Footer con firme
-        const yFinal = doc.lastAutoTable.finalY + 15;
+        const yFinal = (bodyDettagli.length > 0 ? doc.lastAutoTable.finalY : yAfterFirst) + 15;
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -1084,6 +1068,17 @@ function App() {
                                     />
                                 </div>
                             `}
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Note</label>
+                                <textarea
+                                    value=${puliziaForm.note}
+                                    onInput=${(e) => setPuliziaForm({...puliziaForm, note: e.target.value})}
+                                    placeholder="Eventuali annotazioni..."
+                                    rows="2"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                />
+                            </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Operatore</label>
