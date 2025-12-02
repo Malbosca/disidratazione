@@ -1259,7 +1259,7 @@ function App() {
                                 onClick=${async () => {
                                     if (!confirm('Inviare il report della settimana scorsa via email?')) return;
                                     try {
-                                        const resp = await fetch(API_BASE + '/invia-report', { method: 'POST' });
+                                        const resp = await fetch(API_URL + '/invia-report', { method: 'POST' });
                                         const data = await resp.json();
                                         if (data.success) {
                                             alert('✅ ' + data.message + '\\n\\nPulizie trovate: ' + data.pulizieTrovate);
