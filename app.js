@@ -148,10 +148,10 @@ const API = {
         }
     },
 
-    async caricaPulizieHACCP() {
+    async caricaPulizie() {
         try {
-            const response = await fetch(`${API_URL}/pulizie-haccp`);
-            if (!response.ok) throw new Error('Errore caricamento pulizie HACCP');
+            const response = await fetch(`${API_URL}/pulizie`);
+            if (!response.ok) throw new Error('Errore caricamento pulizie');
             return await response.json();
         } catch (error) {
             console.error('Errore API:', error);
@@ -159,30 +159,30 @@ const API = {
         }
     },
 
-    async salvaPuliziaHACCP(pulizia) {
+    async salvaPulizia(pulizia) {
         try {
-            const response = await fetch(`${API_URL}/pulizie-haccp`, {
+            const response = await fetch(`${API_URL}/pulizie`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(pulizia)
             });
-            if (!response.ok) throw new Error('Errore salvataggio pulizia HACCP');
+            if (!response.ok) throw new Error('Errore salvataggio pulizia');
             return true;
         } catch (error) {
-            console.error('Errore salvataggio pulizia HACCP:', error);
+            console.error('Errore salvataggio pulizia:', error);
             return false;
         }
     },
 
-    async eliminaPuliziaHACCP(id) {
+    async eliminaPulizia(id) {
         try {
-            const response = await fetch(`${API_URL}/pulizie-haccp/${id}`, {
+            const response = await fetch(`${API_URL}/pulizie/${id}`, {
                 method: 'DELETE'
             });
-            if (!response.ok) throw new Error('Errore eliminazione pulizia HACCP');
+            if (!response.ok) throw new Error('Errore eliminazione pulizia');
             return true;
         } catch (error) {
-            console.error('Errore eliminazione pulizia HACCP:', error);
+            console.error('Errore eliminazione pulizia:', error);
             return false;
         }
     }
@@ -200,11 +200,21 @@ function App() {
     const [online, setOnline] = useState(navigator.onLine);
     const [showReport, setShowReport] = useState(false);
     const [creatingLotto, setCreatingLotto] = useState(false);
-    const [showPulizieHACCP, setShowPulizieHACCP] = useState(false);
-    const [pulizieHACCP, setPulizieHACCP] = useState([]);
-    const [puliziaHACCPForm, setPuliziaHACCPForm] = useState({
+    const [showPulizie, setShowPulizie] = useState(false);
+    const [pulizie, setPulizie] = useState([]);
+    const [puliziaForm, setPuliziaForm] = useState({
         data: new Date().toISOString().split('T')[0],
         locale: 'Laboratorio',
+        // Pulizie giornaliere
+        pianoLavoro: false,
+        lavello: false,
+        tagliaverdure: false,
+        scopatoPavimento: false,
+        lavatoPavimento: false,
+        disidratatore: false,
+        ceste: false,
+        retine: false,
+        // Pulizie approfondite
         spazzaturaPavimento: false,
         lavaggioPavimentoDetergente: false,
         controlloRagnatele: false,
@@ -246,22 +256,12 @@ function App() {
         oraSpegnimento40: '',
         oraAccensione100: '',
         oraSpegnimento100: '',
-        pulizie: {
-            pianoLavoro: false,
-            lavello: false,
-            tagliaverdure: false,
-            scopatoPavimento: false,
-            lavatoPavimento: false,
-            disidratatore: false,
-            ceste: false,
-            retine: false
-        },
         note: ''
     });
 
     useEffect(() => {
         caricaDati();
-        caricaPulizieHACCP();
+        caricaPulizie();
         
         window.addEventListener('online', () => setOnline(true));
         window.addEventListener('offline', () => setOnline(false));
@@ -274,30 +274,38 @@ function App() {
         setLoading(false);
     };
 
-    const caricaPulizieHACCP = async () => {
-        const pulizie = await API.caricaPulizieHACCP();
-        setPulizieHACCP(pulizie);
+    const caricaPulizie = async () => {
+        const p = await API.caricaPulizie();
+        setPulizie(p);
     };
 
-    const salvaPuliziaHACCP = async () => {
-        if (!puliziaHACCPForm.data) {
+    const salvaPulizia = async () => {
+        if (!puliziaForm.data) {
             alert('Inserisci la data');
             return;
         }
 
         const nuovaPulizia = {
-            id: 'HACCP_' + Date.now(),
-            ...puliziaHACCPForm
+            id: 'PUL_' + Date.now(),
+            ...puliziaForm
         };
 
-        const success = await API.salvaPuliziaHACCP(nuovaPulizia);
+        const success = await API.salvaPulizia(nuovaPulizia);
         
         if (success) {
-            alert('✅ Pulizia HACCP registrata!');
-            await caricaPulizieHACCP();
-            setPuliziaHACCPForm({
+            alert('✅ Pulizia registrata!');
+            await caricaPulizie();
+            setPuliziaForm({
                 data: new Date().toISOString().split('T')[0],
                 locale: 'Laboratorio',
+                pianoLavoro: false,
+                lavello: false,
+                tagliaverdure: false,
+                scopatoPavimento: false,
+                lavatoPavimento: false,
+                disidratatore: false,
+                ceste: false,
+                retine: false,
                 spazzaturaPavimento: false,
                 lavaggioPavimentoDetergente: false,
                 controlloRagnatele: false,
@@ -307,7 +315,7 @@ function App() {
                 noteNonConformita: '',
                 operatore: 'Emanuele Visigalli'
             });
-            setShowPulizieHACCP(false);
+            setShowPulizie(false);
         } else {
             alert('❌ Errore salvataggio');
         }
@@ -350,46 +358,30 @@ function App() {
             giorno.setDate(giorno.getDate() + i);
             const giornoStr = giorno.toISOString().split('T')[0];
             
-            // Pulizie giornaliere dalle attività
-            const pulizieGiornaliere = {
-                pianoLavoro: false,
-                lavello: false,
-                tagliaverdure: false,
-                scopatoPavimento: false,
-                lavatoPavimento: false,
-                disidratatore: false,
-                ceste: false,
-                retine: false
-            };
-            
-            lavorazioni.forEach(lav => {
-                lav.attivita.forEach(att => {
-                    if (att.data === giornoStr && att.pulizie) {
-                        if (att.pulizie.pianoLavoro) pulizieGiornaliere.pianoLavoro = true;
-                        if (att.pulizie.lavello) pulizieGiornaliere.lavello = true;
-                        if (att.pulizie.tagliaverdure) pulizieGiornaliere.tagliaverdure = true;
-                        if (att.pulizie.scopatoPavimento) pulizieGiornaliere.scopatoPavimento = true;
-                        if (att.pulizie.lavatoPavimento) pulizieGiornaliere.lavatoPavimento = true;
-                        if (att.pulizie.disidratatore) pulizieGiornaliere.disidratatore = true;
-                        if (att.pulizie.ceste) pulizieGiornaliere.ceste = true;
-                        if (att.pulizie.retine) pulizieGiornaliere.retine = true;
-                    }
-                });
-            });
-            
-            // Pulizie HACCP approfondite
-            const puliziaHACCP = pulizieHACCP.find(p => p.data === giornoStr);
+            // Trova pulizia per questo giorno dalla nuova tabella unificata
+            const puliziaGiorno = pulizie.find(p => p.data === giornoStr);
             
             giorniSettimana.push({
                 data: formatDateIT(giorno),
                 giornoNome: ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][giorno.getDay()],
-                ...pulizieGiornaliere,
-                // HACCP
-                ragnatele: puliziaHACCP?.controlloRagnatele || false,
-                prodotto: puliziaHACCP?.prodottoUtilizzato || '',
-                locale: puliziaHACCP?.locale || '',
-                esito: puliziaHACCP?.esito || '',
-                note: puliziaHACCP?.noteNonConformita || ''
+                // Pulizie giornaliere
+                pianoLavoro: puliziaGiorno?.pianoLavoro || false,
+                lavello: puliziaGiorno?.lavello || false,
+                tagliaverdure: puliziaGiorno?.tagliaverdure || false,
+                scopatoPavimento: puliziaGiorno?.scopatoPavimento || false,
+                lavatoPavimento: puliziaGiorno?.lavatoPavimento || false,
+                disidratatore: puliziaGiorno?.disidratatore || false,
+                ceste: puliziaGiorno?.ceste || false,
+                retine: puliziaGiorno?.retine || false,
+                // HACCP approfondite
+                spazzaturaPavimento: puliziaGiorno?.spazzaturaPavimento || false,
+                lavaggioPavimentoDetergente: puliziaGiorno?.lavaggioPavimentoDetergente || false,
+                ragnatele: puliziaGiorno?.controlloRagnatele || false,
+                prodotto: puliziaGiorno?.prodottoUtilizzato || '',
+                locale: puliziaGiorno?.locale || '',
+                angoli: puliziaGiorno?.angoliScaffali || '',
+                esito: puliziaGiorno?.esito || '',
+                note: puliziaGiorno?.noteNonConformita || ''
             });
         }
         
@@ -400,7 +392,7 @@ function App() {
         // Tabella pulizie giornaliere
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.text('PULIZIE GIORNALIERE (durante lavorazioni)', 14, 38);
+        doc.text('PULIZIE GIORNALIERE', 14, 38);
         
         const headersGiornaliere = [
             ['Data', 'Giorno', 'Piano\nlavoro', 'Lavello', 'Taglia-\nverdure', 'Scopatura\npavimento', 'Lavaggio\npavimento', 'Disidra-\ntatore', 'Ceste', 'Retine']
@@ -633,16 +625,6 @@ function App() {
             oraSpegnimento40: '',
             oraAccensione100: '',
             oraSpegnimento100: '',
-            pulizie: {
-                pianoLavoro: false,
-                lavello: false,
-                tagliaverdure: false,
-                scopatoPavimento: false,
-                lavatoPavimento: false,
-                disidratatore: false,
-                ceste: false,
-                retine: false
-            },
             note: ''
         });
         
@@ -660,16 +642,6 @@ function App() {
             oraSpegnimento40: attivita.oraSpegnimento40 || '',
             oraAccensione100: attivita.oraAccensione100 || '',
             oraSpegnimento100: attivita.oraSpegnimento100 || '',
-            pulizie: attivita.pulizie || {
-                pianoLavoro: false,
-                lavello: false,
-                tagliaverdure: false,
-                scopatoPavimento: false,
-                lavatoPavimento: false,
-                disidratatore: false,
-                ceste: false,
-                retine: false
-            },
             note: attivita.note || ''
         });
     };
@@ -685,16 +657,6 @@ function App() {
             oraSpegnimento40: '',
             oraAccensione100: '',
             oraSpegnimento100: '',
-            pulizie: {
-                pianoLavoro: false,
-                lavello: false,
-                tagliaverdure: false,
-                scopatoPavimento: false,
-                lavatoPavimento: false,
-                disidratatore: false,
-                ceste: false,
-                retine: false
-            },
             note: ''
         });
     };
@@ -887,29 +849,29 @@ function App() {
                 <!-- Pulsanti Azione -->
                 <div class="grid grid-cols-3 gap-2 mb-4">
                     <button
-                        onClick=${() => { setShowForm(!showForm); setShowReport(false); setShowPulizieHACCP(false); }}
+                        onClick=${() => { setShowForm(!showForm); setShowReport(false); setShowPulizie(false); }}
                         class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white`}"
                     >
                         ${showForm ? '✕' : '➕'} Nuova
                     </button>
                     <button
-                        onClick=${() => { setShowReport(!showReport); setShowForm(false); setShowPulizieHACCP(false); }}
+                        onClick=${() => { setShowReport(!showReport); setShowForm(false); setShowPulizie(false); }}
                         class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showReport ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white`}"
                     >
                         ${showReport ? '✕' : '📊'} Report
                     </button>
                     <button
-                        onClick=${() => { setShowPulizieHACCP(!showPulizieHACCP); setShowForm(false); setShowReport(false); }}
-                        class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showPulizieHACCP ? 'bg-gray-500 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-700'} text-white`}"
+                        onClick=${() => { setShowPulizie(!showPulizie); setShowForm(false); setShowReport(false); }}
+                        class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showPulizie ? 'bg-gray-500 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-700'} text-white`}"
                     >
-                        ${showPulizieHACCP ? '✕' : '🧹'} HACCP
+                        ${showPulizie ? '✕' : '🧹'} Pulizie
                     </button>
                 </div>
 
-                <!-- Form Pulizie HACCP -->
-                ${showPulizieHACCP && html`
+                <!-- Form Pulizie -->
+                ${showPulizie && html`
                     <div class="bg-white rounded-xl shadow-lg p-4 mb-4 border-2 border-amber-400">
-                        <h2 class="text-lg font-bold text-amber-800 mb-4">🧹 Pulizie Approfondite HACCP</h2>
+                        <h2 class="text-lg font-bold text-amber-800 mb-4">🧹 Registrazione Pulizie</h2>
                         
                         <div class="space-y-4">
                             <div class="grid grid-cols-2 gap-3">
@@ -917,16 +879,16 @@ function App() {
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Data *</label>
                                     <input
                                         type="date"
-                                        value=${puliziaHACCPForm.data}
-                                        onInput=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, data: e.target.value})}
+                                        value=${puliziaForm.data}
+                                        onInput=${(e) => setPuliziaForm({...puliziaForm, data: e.target.value})}
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                     />
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Locale *</label>
                                     <select
-                                        value=${puliziaHACCPForm.locale}
-                                        onChange=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, locale: e.target.value})}
+                                        value=${puliziaForm.locale}
+                                        onChange=${(e) => setPuliziaForm({...puliziaForm, locale: e.target.value})}
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                     >
                                         <option value="Laboratorio">🏭 Laboratorio</option>
@@ -935,32 +897,60 @@ function App() {
                                 </div>
                             </div>
                             
+                            <!-- Pulizie Giornaliere -->
                             <div>
-                                <h4 class="font-medium text-gray-700 mb-2 text-sm">Operazioni effettuate</h4>
+                                <h4 class="font-medium text-green-700 mb-2 text-sm">🧹 Pulizie Giornaliere</h4>
+                                <div class="grid grid-cols-2 gap-2">
+                                    ${Object.entries({
+                                        pianoLavoro: 'Piano lavoro',
+                                        lavello: 'Lavello',
+                                        tagliaverdure: 'Tagliaverdure',
+                                        scopatoPavimento: 'Scopatura pavimento',
+                                        lavatoPavimento: 'Lavaggio pavimento',
+                                        disidratatore: 'Disidratatore',
+                                        ceste: 'Ceste',
+                                        retine: 'Retine'
+                                    }).map(([key, label]) => html`
+                                        <label class="flex items-center space-x-2 cursor-pointer bg-green-50 p-2 rounded-lg text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked=${puliziaForm[key]}
+                                                onChange=${(e) => setPuliziaForm({...puliziaForm, [key]: e.target.checked})}
+                                                class="w-4 h-4"
+                                            />
+                                            <span>${label}</span>
+                                        </label>
+                                    `)}
+                                </div>
+                            </div>
+                            
+                            <!-- Pulizie Approfondite HACCP -->
+                            <div>
+                                <h4 class="font-medium text-amber-700 mb-2 text-sm">🔬 Pulizie Approfondite HACCP</h4>
                                 <div class="grid grid-cols-1 gap-2">
-                                    <label class="flex items-center space-x-3 cursor-pointer bg-gray-50 p-2 rounded-lg">
+                                    <label class="flex items-center space-x-3 cursor-pointer bg-amber-50 p-2 rounded-lg">
                                         <input
                                             type="checkbox"
-                                            checked=${puliziaHACCPForm.spazzaturaPavimento}
-                                            onChange=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, spazzaturaPavimento: e.target.checked})}
+                                            checked=${puliziaForm.spazzaturaPavimento}
+                                            onChange=${(e) => setPuliziaForm({...puliziaForm, spazzaturaPavimento: e.target.checked})}
                                             class="w-5 h-5"
                                         />
                                         <span class="text-sm">🧹 Spazzatura pavimento</span>
                                     </label>
-                                    <label class="flex items-center space-x-3 cursor-pointer bg-gray-50 p-2 rounded-lg">
+                                    <label class="flex items-center space-x-3 cursor-pointer bg-amber-50 p-2 rounded-lg">
                                         <input
                                             type="checkbox"
-                                            checked=${puliziaHACCPForm.lavaggioPavimentoDetergente}
-                                            onChange=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, lavaggioPavimentoDetergente: e.target.checked})}
+                                            checked=${puliziaForm.lavaggioPavimentoDetergente}
+                                            onChange=${(e) => setPuliziaForm({...puliziaForm, lavaggioPavimentoDetergente: e.target.checked})}
                                             class="w-5 h-5"
                                         />
                                         <span class="text-sm">🧴 Lavaggio pavimento con detergente</span>
                                     </label>
-                                    <label class="flex items-center space-x-3 cursor-pointer bg-gray-50 p-2 rounded-lg">
+                                    <label class="flex items-center space-x-3 cursor-pointer bg-amber-50 p-2 rounded-lg">
                                         <input
                                             type="checkbox"
-                                            checked=${puliziaHACCPForm.controlloRagnatele}
-                                            onChange=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, controlloRagnatele: e.target.checked})}
+                                            checked=${puliziaForm.controlloRagnatele}
+                                            onChange=${(e) => setPuliziaForm({...puliziaForm, controlloRagnatele: e.target.checked})}
                                             class="w-5 h-5"
                                         />
                                         <span class="text-sm">🕸️ Controllo e pulizia ragnatele</span>
@@ -972,8 +962,8 @@ function App() {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Prodotto utilizzato</label>
                                 <input
                                     type="text"
-                                    value=${puliziaHACCPForm.prodottoUtilizzato}
-                                    onInput=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, prodottoUtilizzato: e.target.value})}
+                                    value=${puliziaForm.prodottoUtilizzato}
+                                    onInput=${(e) => setPuliziaForm({...puliziaForm, prodottoUtilizzato: e.target.value})}
                                     placeholder="Es: Detergente XYZ"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                 />
@@ -983,8 +973,8 @@ function App() {
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Angoli/Scaffali</label>
                                     <select
-                                        value=${puliziaHACCPForm.angoliScaffali}
-                                        onChange=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, angoliScaffali: e.target.value})}
+                                        value=${puliziaForm.angoliScaffali}
+                                        onChange=${(e) => setPuliziaForm({...puliziaForm, angoliScaffali: e.target.value})}
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                     >
                                         <option value="Puliti">✅ Puliti</option>
@@ -994,8 +984,8 @@ function App() {
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Esito</label>
                                     <select
-                                        value=${puliziaHACCPForm.esito}
-                                        onChange=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, esito: e.target.value})}
+                                        value=${puliziaForm.esito}
+                                        onChange=${(e) => setPuliziaForm({...puliziaForm, esito: e.target.value})}
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                     >
                                         <option value="Conforme">✅ Conforme</option>
@@ -1004,12 +994,12 @@ function App() {
                                 </div>
                             </div>
                             
-                            ${puliziaHACCPForm.esito === 'Non conforme' && html`
+                            ${puliziaForm.esito === 'Non conforme' && html`
                                 <div>
                                     <label class="block text-sm font-medium text-red-700 mb-1">Note non conformità *</label>
                                     <textarea
-                                        value=${puliziaHACCPForm.noteNonConformita}
-                                        onInput=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, noteNonConformita: e.target.value})}
+                                        value=${puliziaForm.noteNonConformita}
+                                        onInput=${(e) => setPuliziaForm({...puliziaForm, noteNonConformita: e.target.value})}
                                         placeholder="Descrivi il problema riscontrato..."
                                         rows="2"
                                         class="w-full px-3 py-2 border border-red-300 rounded-lg text-sm bg-red-50"
@@ -1021,26 +1011,26 @@ function App() {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Operatore</label>
                                 <input
                                     type="text"
-                                    value=${puliziaHACCPForm.operatore}
-                                    onInput=${(e) => setPuliziaHACCPForm({...puliziaHACCPForm, operatore: e.target.value})}
+                                    value=${puliziaForm.operatore}
+                                    onInput=${(e) => setPuliziaForm({...puliziaForm, operatore: e.target.value})}
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                 />
                             </div>
                         </div>
                         
                         <button
-                            onClick=${salvaPuliziaHACCP}
+                            onClick=${salvaPulizia}
                             class="mt-4 w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-3 rounded-xl font-medium"
                         >
-                            ✅ Registra Pulizia HACCP
+                            ✅ Registra Pulizia
                         </button>
                         
-                        <!-- Storico pulizie HACCP -->
-                        ${pulizieHACCP.length > 0 && html`
+                        <!-- Storico pulizie -->
+                        ${pulizie.length > 0 && html`
                             <div class="mt-4 pt-4 border-t border-amber-200">
                                 <h3 class="font-medium text-gray-700 mb-2 text-sm">📋 Ultime registrazioni</h3>
                                 <div class="space-y-2 max-h-40 overflow-y-auto">
-                                    ${pulizieHACCP
+                                    ${pulizie
                                         .sort((a, b) => new Date(b.data) - new Date(a.data))
                                         .slice(0, 5)
                                         .map(p => html`
@@ -1494,18 +1484,6 @@ function App() {
                                                     🟢 100: ${att.oraAccensione100 && `▶️${att.oraAccensione100}`} ${att.oraSpegnimento100 && `⏹️${att.oraSpegnimento100}`}
                                                 </div>
                                             `}
-                                            ${att.pulizie && Object.values(att.pulizie).some(v => v) && html`
-                                                <div class="mt-1 flex flex-wrap gap-1">
-                                                    ${att.pulizie.pianoLavoro && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Piano lavoro</span>`}
-                                                    ${att.pulizie.lavello && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavello</span>`}
-                                                    ${att.pulizie.tagliaverdure && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Tagliaverdure</span>`}
-                                                    ${att.pulizie.scopatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Scopatura pavimento</span>`}
-                                                    ${att.pulizie.lavatoPavimento && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Lavaggio pavimento</span>`}
-                                                    ${att.pulizie.disidratatore && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Disidratatore</span>`}
-                                                    ${att.pulizie.ceste && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Ceste</span>`}
-                                                    ${att.pulizie.retine && html`<span class="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs">Retine</span>`}
-                                                </div>
-                                            `}
                                             ${att.note && html`<div class="text-gray-600 italic mt-1 text-xs">💬 ${att.note}</div>`}
                                         </div>
                                     `)}
@@ -1606,35 +1584,6 @@ function App() {
                                                 placeholder="Spegnimento"
                                                 class="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                             />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="font-medium text-gray-700 mb-2 text-sm">🧹 Pulizie giornaliere</h4>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            ${Object.entries({
-                                                pianoLavoro: 'Piano lavoro',
-                                                lavello: 'Lavello',
-                                                tagliaverdure: 'Tagliaverdure',
-                                                scopatoPavimento: 'Scopatura pavimento',
-                                                lavatoPavimento: 'Lavaggio pavimento',
-                                                disidratatore: 'Disidratatore',
-                                                ceste: 'Ceste',
-                                                retine: 'Retine'
-                                            }).map(([key, label]) => html`
-                                                <label class="flex items-center space-x-2 cursor-pointer text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked=${attivitaGiornaliera.pulizie[key]}
-                                                        onChange=${(e) => setAttivitaGiornaliera({
-                                                            ...attivitaGiornaliera,
-                                                            pulizie: {...attivitaGiornaliera.pulizie, [key]: e.target.checked}
-                                                        })}
-                                                        class="w-4 h-4"
-                                                    />
-                                                    <span>${label}</span>
-                                                </label>
-                                            `)}
                                         </div>
                                     </div>
 
