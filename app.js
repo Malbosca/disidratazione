@@ -199,6 +199,7 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [online, setOnline] = useState(navigator.onLine);
     const [showReport, setShowReport] = useState(false);
+    const [showDashboard, setShowDashboard] = useState(true);
     const [creatingLotto, setCreatingLotto] = useState(false);
     const [showPulizie, setShowPulizie] = useState(false);
     const [pulizie, setPulizie] = useState([]);
@@ -209,15 +210,13 @@ function App() {
         pianoLavoro: false,
         lavello: false,
         tagliaverdure: false,
-        scopatoPavimento: false,
-        lavatoPavimento: false,
+        spazzaturaPavimento: false,
+        lavaggioPavimentoDetergente: false,
         disidratatore: false,
         ceste: false,
         retine: false,
-        // Pulizie approfondite
-        spazzaturaPavimento: false,
-        lavaggioPavimentoDetergente: false,
         controlloRagnatele: false,
+        // Altri campi
         prodottoUtilizzato: '',
         angoliScaffali: 'Puliti',
         esito: 'Conforme',
@@ -301,13 +300,11 @@ function App() {
                 pianoLavoro: false,
                 lavello: false,
                 tagliaverdure: false,
-                scopatoPavimento: false,
-                lavatoPavimento: false,
+                spazzaturaPavimento: false,
+                lavaggioPavimentoDetergente: false,
                 disidratatore: false,
                 ceste: false,
                 retine: false,
-                spazzaturaPavimento: false,
-                lavaggioPavimentoDetergente: false,
                 controlloRagnatele: false,
                 prodottoUtilizzato: '',
                 angoliScaffali: 'Puliti',
@@ -368,15 +365,12 @@ function App() {
                 pianoLavoro: puliziaGiorno?.pianoLavoro || false,
                 lavello: puliziaGiorno?.lavello || false,
                 tagliaverdure: puliziaGiorno?.tagliaverdure || false,
-                scopatoPavimento: puliziaGiorno?.scopatoPavimento || false,
-                lavatoPavimento: puliziaGiorno?.lavatoPavimento || false,
+                spazzaturaPavimento: puliziaGiorno?.spazzaturaPavimento || false,
+                lavaggioPavimentoDetergente: puliziaGiorno?.lavaggioPavimentoDetergente || false,
                 disidratatore: puliziaGiorno?.disidratatore || false,
                 ceste: puliziaGiorno?.ceste || false,
                 retine: puliziaGiorno?.retine || false,
-                // HACCP approfondite
-                spazzaturaPavimento: puliziaGiorno?.spazzaturaPavimento || false,
-                lavaggioPavimentoDetergente: puliziaGiorno?.lavaggioPavimentoDetergente || false,
-                ragnatele: puliziaGiorno?.controlloRagnatele || false,
+                controlloRagnatele: puliziaGiorno?.controlloRagnatele || false,
                 prodotto: puliziaGiorno?.prodottoUtilizzato || '',
                 locale: puliziaGiorno?.locale || '',
                 angoli: puliziaGiorno?.angoliScaffali || '',
@@ -395,7 +389,7 @@ function App() {
         doc.text('PULIZIE GIORNALIERE', 14, 38);
         
         const headersGiornaliere = [
-            ['Data', 'Giorno', 'Piano\nlavoro', 'Lavello', 'Taglia-\nverdure', 'Scopatura\npavimento', 'Lavaggio\npavimento', 'Disidra-\ntatore', 'Ceste', 'Retine']
+            ['Data', 'Giorno', 'Piano\nlavoro', 'Lavello', 'Taglia-\nverdure', 'Spazzatura\npavimento', 'Lavaggio\ndetergente', 'Disidra-\ntatore', 'Ceste', 'Retine', 'Ragnatele']
         ];
         
         const bodyGiornaliere = giorniSettimana.map(g => [
@@ -404,11 +398,12 @@ function App() {
             g.pianoLavoro ? check : empty,
             g.lavello ? check : empty,
             g.tagliaverdure ? check : empty,
-            g.scopatoPavimento ? check : empty,
-            g.lavatoPavimento ? check : empty,
+            g.spazzaturaPavimento ? check : empty,
+            g.lavaggioPavimentoDetergente ? check : empty,
             g.disidratatore ? check : empty,
             g.ceste ? check : empty,
-            g.retine ? check : empty
+            g.retine ? check : empty,
+            g.controlloRagnatele ? check : empty
         ]);
         
         doc.autoTable({
@@ -847,26 +842,142 @@ function App() {
                 </div>
 
                 <!-- Pulsanti Azione -->
-                <div class="grid grid-cols-3 gap-2 mb-4">
+                <div class="grid grid-cols-4 gap-2 mb-4">
                     <button
-                        onClick=${() => { setShowForm(!showForm); setShowReport(false); setShowPulizie(false); }}
-                        class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white`}"
+                        onClick=${() => { setShowDashboard(!showDashboard); setShowForm(false); setShowReport(false); setShowPulizie(false); }}
+                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showDashboard ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white`}"
+                    >
+                        📈 Home
+                    </button>
+                    <button
+                        onClick=${() => { setShowForm(!showForm); setShowDashboard(false); setShowReport(false); setShowPulizie(false); }}
+                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white`}"
                     >
                         ${showForm ? '✕' : '➕'} Nuova
                     </button>
                     <button
-                        onClick=${() => { setShowReport(!showReport); setShowForm(false); setShowPulizie(false); }}
-                        class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showReport ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white`}"
-                    >
-                        ${showReport ? '✕' : '📊'} Report
-                    </button>
-                    <button
-                        onClick=${() => { setShowPulizie(!showPulizie); setShowForm(false); setShowReport(false); }}
-                        class="${`flex items-center justify-center gap-1 px-3 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showPulizie ? 'bg-gray-500 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-700'} text-white`}"
+                        onClick=${() => { setShowPulizie(!showPulizie); setShowDashboard(false); setShowForm(false); setShowReport(false); }}
+                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showPulizie ? 'bg-gray-500 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-700'} text-white`}"
                     >
                         ${showPulizie ? '✕' : '🧹'} Pulizie
                     </button>
+                    <button
+                        onClick=${() => { setShowReport(!showReport); setShowDashboard(false); setShowForm(false); setShowPulizie(false); }}
+                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showReport ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white`}"
+                    >
+                        ${showReport ? '✕' : '📊'} Report
+                    </button>
                 </div>
+
+                <!-- Dashboard -->
+                ${showDashboard && html`
+                    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+                        <h2 class="text-lg font-bold text-purple-800 mb-4">📈 Dashboard</h2>
+                        
+                        <!-- Statistiche rapide -->
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                                <div class="text-2xl font-bold text-yellow-700">
+                                    ${lavorazioni.filter(l => !l.completata).length}
+                                </div>
+                                <div class="text-xs text-yellow-600">🔄 In corso</div>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-3 border border-green-200">
+                                <div class="text-2xl font-bold text-green-700">
+                                    ${lavorazioni.filter(l => l.completata).length}
+                                </div>
+                                <div class="text-xs text-green-600">✅ Completate</div>
+                            </div>
+                            <div class="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                                <div class="text-2xl font-bold text-blue-700">
+                                    ${(() => {
+                                        const totale = lavorazioni.reduce((sum, l) => {
+                                            return sum + (l.prodotti || []).reduce((s, p) => s + (parseFloat(p.kgAcquistati) || 0), 0);
+                                        }, 0);
+                                        return totale.toFixed(1);
+                                    })()} kg
+                                </div>
+                                <div class="text-xs text-blue-600">🥬 Kg freschi totali</div>
+                            </div>
+                            <div class="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                                <div class="text-2xl font-bold text-orange-700">
+                                    ${(() => {
+                                        const totale = lavorazioni.reduce((sum, l) => {
+                                            return sum + (l.prodotti || []).reduce((s, p) => s + (parseFloat(p.kgSecco) || 0), 0);
+                                        }, 0);
+                                        return totale.toFixed(1);
+                                    })()} kg
+                                </div>
+                                <div class="text-xs text-orange-600">🥕 Kg secchi totali</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pulizie questa settimana -->
+                        <div class="bg-amber-50 rounded-lg p-3 border border-amber-200 mb-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="text-lg font-bold text-amber-700">
+                                        ${(() => {
+                                            const oggi = new Date();
+                                            const inizioSettimana = new Date(oggi);
+                                            inizioSettimana.setDate(oggi.getDate() - oggi.getDay() + 1);
+                                            inizioSettimana.setHours(0, 0, 0, 0);
+                                            return pulizie.filter(p => new Date(p.data) >= inizioSettimana).length;
+                                        })()}
+                                    </div>
+                                    <div class="text-xs text-amber-600">🧹 Pulizie questa settimana</div>
+                                </div>
+                                <div class="text-3xl">🧹</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lavorazioni in corso -->
+                        ${lavorazioni.filter(l => !l.completata).length > 0 && html`
+                            <div class="mb-4">
+                                <h3 class="font-medium text-gray-700 mb-2 text-sm">🔄 Lavorazioni in corso</h3>
+                                <div class="space-y-2">
+                                    ${lavorazioni.filter(l => !l.completata).map(lav => html`
+                                        <div 
+                                            class="bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer hover:bg-yellow-100"
+                                            onClick=${() => { setCurrentLavorazione(lav); setProdottiCompletamento(lav.prodotti.map(p => ({...p, kgSecco: p.kgSecco || '', categoria: p.categoria || 'verdura'}))); setShowDashboard(false); }}
+                                        >
+                                            <div class="flex justify-between items-center">
+                                                <div>
+                                                    <div class="font-medium text-yellow-800">
+                                                        ${(lav.prodotti || []).map(p => p.prodotto).join(', ') || 'Prodotti...'}
+                                                    </div>
+                                                    <div class="text-xs text-yellow-600">
+                                                        📅 ${new Date(lav.dataInizio).toLocaleDateString('it-IT')} 
+                                                        • ${lav.attivita?.length || 0} attività
+                                                    </div>
+                                                </div>
+                                                <span class="text-yellow-600">▶️</span>
+                                            </div>
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+                        
+                        <!-- Ultime pulizie -->
+                        ${pulizie.length > 0 && html`
+                            <div>
+                                <h3 class="font-medium text-gray-700 mb-2 text-sm">🧹 Ultime pulizie</h3>
+                                <div class="space-y-2">
+                                    ${pulizie.slice(0, 3).map(p => html`
+                                        <div class="bg-gray-50 p-2 rounded-lg text-xs flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">${new Date(p.data).toLocaleDateString('it-IT')}</span>
+                                                <span class="text-gray-500 ml-2">${p.locale}</span>
+                                            </div>
+                                            <span class="${p.esito === 'Conforme' ? 'text-green-600' : 'text-red-600'}">${p.esito === 'Conforme' ? '✅' : '❌'}</span>
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+                    </div>
+                `}
 
                 <!-- Form Pulizie -->
                 ${showPulizie && html`
@@ -899,17 +1010,18 @@ function App() {
                             
                             <!-- Pulizie Giornaliere -->
                             <div>
-                                <h4 class="font-medium text-green-700 mb-2 text-sm">🧹 Pulizie Giornaliere</h4>
+                                <h4 class="font-medium text-green-700 mb-2 text-sm">🧹 Operazioni effettuate</h4>
                                 <div class="grid grid-cols-2 gap-2">
                                     ${Object.entries({
                                         pianoLavoro: 'Piano lavoro',
                                         lavello: 'Lavello',
                                         tagliaverdure: 'Tagliaverdure',
-                                        scopatoPavimento: 'Scopatura pavimento',
-                                        lavatoPavimento: 'Lavaggio pavimento',
+                                        spazzaturaPavimento: 'Spazzatura pavimento',
+                                        lavaggioPavimentoDetergente: 'Lavaggio pavimento con detergente',
                                         disidratatore: 'Disidratatore',
                                         ceste: 'Ceste',
-                                        retine: 'Retine'
+                                        retine: 'Retine',
+                                        controlloRagnatele: 'Controllo ragnatele'
                                     }).map(([key, label]) => html`
                                         <label class="flex items-center space-x-2 cursor-pointer bg-green-50 p-2 rounded-lg text-sm">
                                             <input
@@ -921,40 +1033,6 @@ function App() {
                                             <span>${label}</span>
                                         </label>
                                     `)}
-                                </div>
-                            </div>
-                            
-                            <!-- Pulizie Approfondite HACCP -->
-                            <div>
-                                <h4 class="font-medium text-amber-700 mb-2 text-sm">🔬 Pulizie Approfondite HACCP</h4>
-                                <div class="grid grid-cols-1 gap-2">
-                                    <label class="flex items-center space-x-3 cursor-pointer bg-amber-50 p-2 rounded-lg">
-                                        <input
-                                            type="checkbox"
-                                            checked=${puliziaForm.spazzaturaPavimento}
-                                            onChange=${(e) => setPuliziaForm({...puliziaForm, spazzaturaPavimento: e.target.checked})}
-                                            class="w-5 h-5"
-                                        />
-                                        <span class="text-sm">🧹 Spazzatura pavimento</span>
-                                    </label>
-                                    <label class="flex items-center space-x-3 cursor-pointer bg-amber-50 p-2 rounded-lg">
-                                        <input
-                                            type="checkbox"
-                                            checked=${puliziaForm.lavaggioPavimentoDetergente}
-                                            onChange=${(e) => setPuliziaForm({...puliziaForm, lavaggioPavimentoDetergente: e.target.checked})}
-                                            class="w-5 h-5"
-                                        />
-                                        <span class="text-sm">🧴 Lavaggio pavimento con detergente</span>
-                                    </label>
-                                    <label class="flex items-center space-x-3 cursor-pointer bg-amber-50 p-2 rounded-lg">
-                                        <input
-                                            type="checkbox"
-                                            checked=${puliziaForm.controlloRagnatele}
-                                            onChange=${(e) => setPuliziaForm({...puliziaForm, controlloRagnatele: e.target.checked})}
-                                            class="w-5 h-5"
-                                        />
-                                        <span class="text-sm">🕸️ Controllo e pulizia ragnatele</span>
-                                    </label>
                                 </div>
                             </div>
                             
