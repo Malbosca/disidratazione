@@ -233,7 +233,12 @@ function App() {
         const lunedi = new Date(oggi.setDate(diff));
         return lunedi.toISOString().split('T')[0];
     };
-    const [settimanaHACCP, setSettimanaHACCP] = useState(getSettimanaCorrente());
+    const getFinePeriodo = () => {
+        const oggi = new Date();
+        return oggi.toISOString().split('T')[0];
+    };
+    const [dataInizioReport, setDataInizioReport] = useState(getSettimanaCorrente());
+    const [dataFineReport, setDataFineReport] = useState(getFinePeriodo());
 
     // Form nuova lavorazione con lista prodotti
     const [formData, setFormData] = useState({
@@ -331,10 +336,18 @@ function App() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('landscape', 'mm', 'a4');
             
-            // Calcola date settimana
-            const inizioSettimana = new Date(settimanaHACCP);
-            const fineSettimana = new Date(inizioSettimana);
-            fineSettimana.setDate(fineSettimana.getDate() + 6);
+            // Calcola date dal periodo selezionato
+            const inizioPeriodo = new Date(dataInizioReport);
+            const finePeriodo = new Date(dataFineReport);
+            
+            // Calcola numero giorni
+            const diffTime = finePeriodo - inizioPeriodo;
+            const numGiorni = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            if (numGiorni < 1 || numGiorni > 31) {
+                alert('⚠️ Seleziona un periodo valido (max 31 giorni)');
+                return;
+            }
             
             const formatDateIT = (d) => {
                 return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
@@ -343,24 +356,24 @@ function App() {
         // Titolo
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('SCHEDA PULIZIA LOCALI SETTIMANALE', 148.5, 15, { align: 'center' });
+        doc.text('SCHEDA PULIZIA LOCALI', 148.5, 15, { align: 'center' });
         
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Settimana dal ${formatDateIT(inizioSettimana)} al ${formatDateIT(fineSettimana)}`, 148.5, 22, { align: 'center' });
+        doc.text(`Periodo dal ${formatDateIT(inizioPeriodo)} al ${formatDateIT(finePeriodo)}`, 148.5, 22, { align: 'center' });
         doc.text('Operatore: Emanuele Visigalli', 148.5, 28, { align: 'center' });
         
-        // Raccogli dati per ogni giorno della settimana
-        const giorniSettimana = [];
-        for (let i = 0; i < 7; i++) {
-            const giorno = new Date(inizioSettimana);
+        // Raccogli dati per ogni giorno del periodo
+        const giorniPeriodo = [];
+        for (let i = 0; i < numGiorni; i++) {
+            const giorno = new Date(inizioPeriodo);
             giorno.setDate(giorno.getDate() + i);
             const giornoStr = giorno.toISOString().split('T')[0];
             
             // Trova pulizia per questo giorno dalla nuova tabella unificata
             const puliziaGiorno = pulizie.find(p => p.data === giornoStr);
             
-            giorniSettimana.push({
+            giorniPeriodo.push({
                 data: formatDateIT(giorno),
                 giornoNome: ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][giorno.getDay()],
                 // Pulizie giornaliere
@@ -394,7 +407,7 @@ function App() {
             ['Data', 'Giorno', 'Piano\nlavoro', 'Lavello', 'Taglia-\nverdure', 'Spazzatura\npavimento', 'Lavaggio\ndetergente', 'Disidra-\ntatore', 'Ceste', 'Retine', 'Ragnatele']
         ];
         
-        const bodyGiornaliere = giorniSettimana.map(g => [
+        const bodyGiornaliere = giorniPeriodo.map(g => [
             g.data,
             g.giornoNome,
             g.pianoLavoro ? check : empty,
@@ -450,7 +463,7 @@ function App() {
             ['Data', 'Giorno', 'Locale', 'Prodotto utilizzato', 'Angoli/Scaffali', 'Esito', 'Note']
         ];
         
-        const bodyDettagli = giorniSettimana
+        const bodyDettagli = giorniPeriodo
             .filter(g => g.locale || g.prodotto || g.esito || g.note)
             .map(g => [
                 g.data,
@@ -496,7 +509,7 @@ function App() {
         doc.text('X = Operazione effettuata', 14, yFinal + 20);
         
         // Salva PDF
-        const nomeFile = `HACCP_Pulizie_${formatDateIT(inizioSettimana).replace(/\//g, '-')}_${formatDateIT(fineSettimana).replace(/\//g, '-')}.pdf`;
+        const nomeFile = `HACCP_Pulizie_${formatDateIT(inizioPeriodo).replace(/\//g, '-')}_${formatDateIT(finePeriodo).replace(/\//g, '-')}.pdf`;
         doc.save(nomeFile);
         
         alert(`✅ Report PDF generato!\n\nFile: ${nomeFile}`);
@@ -1204,31 +1217,35 @@ function App() {
                         
                         <!-- Report HACCP PDF -->
                         <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6">
-                            <h3 class="font-bold text-amber-800 mb-3">🧹 Report Pulizie HACCP Settimanale</h3>
-                            <div class="flex flex-col sm:flex-row gap-3 items-end">
-                                <div class="flex-1">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Seleziona settimana (lunedì)</label>
+                            <h3 class="font-bold text-amber-800 mb-3">🧹 Report Pulizie HACCP</h3>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Data inizio</label>
                                     <input
                                         type="date"
-                                        value=${settimanaHACCP}
-                                        onInput=${(e) => setSettimanaHACCP(e.target.value)}
+                                        value=${dataInizioReport}
+                                        onInput=${(e) => setDataInizioReport(e.target.value)}
                                         class="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm"
                                     />
                                 </div>
-                                <button
-                                    onClick=${generaReportHACCP}
-                                    class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
-                                >
-                                    📄 Genera PDF
-                                </button>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Data fine</label>
+                                    <input
+                                        type="date"
+                                        value=${dataFineReport}
+                                        onInput=${(e) => setDataFineReport(e.target.value)}
+                                        class="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm"
+                                    />
+                                </div>
                             </div>
+                            <button
+                                onClick=${generaReportHACCP}
+                                class="w-full bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
+                            >
+                                📄 Genera PDF
+                            </button>
                             <p class="text-xs text-amber-700 mt-2">
-                                Il report include pulizie giornaliere e approfondite dal ${(() => {
-                                    const inizio = new Date(settimanaHACCP);
-                                    const fine = new Date(inizio);
-                                    fine.setDate(fine.getDate() + 6);
-                                    return `${inizio.toLocaleDateString('it-IT')} al ${fine.toLocaleDateString('it-IT')}`;
-                                })()}
+                                Il report include le pulizie dal ${new Date(dataInizioReport).toLocaleDateString('it-IT')} al ${new Date(dataFineReport).toLocaleDateString('it-IT')}
                             </p>
                         </div>
                         
