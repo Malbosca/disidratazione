@@ -233,6 +233,9 @@ function App() {
     
     // Per il completamento: kg secco e categoria per ogni prodotto
     const [prodottiCompletamento, setProdottiCompletamento] = useState([]);
+    
+    // Per modifica attività esistente
+    const [attivitaInModifica, setAttivitaInModifica] = useState(null);
 
     const [attivitaGiornaliera, setAttivitaGiornaliera] = useState({
         data: new Date().toISOString().split('T')[0],
@@ -594,19 +597,33 @@ function App() {
             return;
         }
 
-        const nuovaAttivita = {
-            id: 'ATT_' + Date.now(),
-            ...attivitaGiornaliera
-        };
-
-        const lavorazioneAggiornata = {
-            ...currentLavorazione,
-            attivita: [...currentLavorazione.attivita, nuovaAttivita]
-        };
+        let lavorazioneAggiornata;
+        
+        if (attivitaInModifica) {
+            // Modifica attività esistente
+            lavorazioneAggiornata = {
+                ...currentLavorazione,
+                attivita: currentLavorazione.attivita.map(att => 
+                    att.id === attivitaInModifica ? { ...attivitaGiornaliera, id: attivitaInModifica } : att
+                )
+            };
+            setAttivitaInModifica(null);
+        } else {
+            // Nuova attività
+            const nuovaAttivita = {
+                id: 'ATT_' + Date.now(),
+                ...attivitaGiornaliera
+            };
+            lavorazioneAggiornata = {
+                ...currentLavorazione,
+                attivita: [...currentLavorazione.attivita, nuovaAttivita]
+            };
+        }
 
         await API.salvaLavorazione(lavorazioneAggiornata);
         await caricaDati();
 
+        // Reset form
         setAttivitaGiornaliera({
             data: new Date(new Date(attivitaGiornaliera.data).getTime() + 86400000).toISOString().split('T')[0],
             oraInizioLavoro: '',
@@ -629,6 +646,71 @@ function App() {
             note: ''
         });
         
+        setCurrentLavorazione(null);
+    };
+    
+    const iniziaModificaAttivita = (attivita) => {
+        setAttivitaInModifica(attivita.id);
+        setAttivitaGiornaliera({
+            data: attivita.data,
+            oraInizioLavoro: attivita.oraInizioLavoro || '',
+            oraFineLavoro: attivita.oraFineLavoro || '',
+            numeroPersone: attivita.numeroPersone || 1,
+            oraAccensione40: attivita.oraAccensione40 || '',
+            oraSpegnimento40: attivita.oraSpegnimento40 || '',
+            oraAccensione100: attivita.oraAccensione100 || '',
+            oraSpegnimento100: attivita.oraSpegnimento100 || '',
+            pulizie: attivita.pulizie || {
+                pianoLavoro: false,
+                lavello: false,
+                tagliaverdure: false,
+                scopatoPavimento: false,
+                lavatoPavimento: false,
+                disidratatore: false,
+                ceste: false,
+                retine: false
+            },
+            note: attivita.note || ''
+        });
+    };
+    
+    const annullaModificaAttivita = () => {
+        setAttivitaInModifica(null);
+        setAttivitaGiornaliera({
+            data: new Date().toISOString().split('T')[0],
+            oraInizioLavoro: '',
+            oraFineLavoro: '',
+            numeroPersone: 1,
+            oraAccensione40: '',
+            oraSpegnimento40: '',
+            oraAccensione100: '',
+            oraSpegnimento100: '',
+            pulizie: {
+                pianoLavoro: false,
+                lavello: false,
+                tagliaverdure: false,
+                scopatoPavimento: false,
+                lavatoPavimento: false,
+                disidratatore: false,
+                ceste: false,
+                retine: false
+            },
+            note: ''
+        });
+    };
+    
+    const eliminaAttivita = async (attivitaId) => {
+        if (!currentLavorazione) return;
+        
+        if (!confirm('Sei sicuro di voler eliminare questa attività?')) return;
+        
+        const lavorazioneAggiornata = {
+            ...currentLavorazione,
+            attivita: currentLavorazione.attivita.filter(att => att.id !== attivitaId)
+        };
+        
+        await API.salvaLavorazione(lavorazioneAggiornata);
+        await caricaDati();
         setCurrentLavorazione(null);
     };
 
@@ -1370,14 +1452,32 @@ function App() {
                                 <h3 class="font-bold text-gray-800 mb-2">Attività Registrate</h3>
                                 <div class="space-y-2">
                                     ${currentLavorazione.attivita.map(att => html`
-                                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 text-sm">
+                                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 text-sm ${attivitaInModifica === att.id ? 'ring-2 ring-amber-400' : ''}">
                                             <div class="flex justify-between items-start mb-1">
                                                 <span class="font-medium">📅 ${new Date(att.data).toLocaleDateString('it-IT')}</span>
-                                                ${att.oraInizioLavoro && att.oraFineLavoro && html`
-                                                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
-                                                        ⏱️ ${formatOre(calcolaOreManodopera(att.oraInizioLavoro, att.oraFineLavoro, att.numeroPersone))}
-                                                    </span>
-                                                `}
+                                                <div class="flex gap-1 items-center">
+                                                    ${att.oraInizioLavoro && att.oraFineLavoro && html`
+                                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                                            ⏱️ ${formatOre(calcolaOreManodopera(att.oraInizioLavoro, att.oraFineLavoro, att.numeroPersone))}
+                                                        </span>
+                                                    `}
+                                                    ${!currentLavorazione.completata && html`
+                                                        <button
+                                                            onClick=${() => iniziaModificaAttivita(att)}
+                                                            class="text-amber-600 hover:text-amber-800 px-1"
+                                                            title="Modifica"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                        <button
+                                                            onClick=${() => eliminaAttivita(att.id)}
+                                                            class="text-red-500 hover:text-red-700 px-1"
+                                                            title="Elimina"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    `}
+                                                </div>
                                             </div>
                                             ${att.oraInizioLavoro && html`
                                                 <div class="text-gray-700">
@@ -1415,8 +1515,20 @@ function App() {
 
                         <!-- Form attività - solo se non completata -->
                         ${!currentLavorazione.completata && html`
-                            <div class="bg-gray-50 rounded-lg p-3">
-                                <h3 class="font-bold text-gray-800 mb-3">➕ Nuova Attività</h3>
+                            <div class="${`rounded-lg p-3 ${attivitaInModifica ? 'bg-amber-50 border-2 border-amber-400' : 'bg-gray-50'}`}">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-bold text-gray-800">
+                                        ${attivitaInModifica ? '✏️ Modifica Attività' : '➕ Nuova Attività'}
+                                    </h3>
+                                    ${attivitaInModifica && html`
+                                        <button
+                                            onClick=${annullaModificaAttivita}
+                                            class="text-sm text-gray-500 hover:text-gray-700"
+                                        >
+                                            ✕ Annulla
+                                        </button>
+                                    `}
+                                </div>
                                 
                                 <div class="space-y-3">
                                     <div>
@@ -1540,9 +1652,9 @@ function App() {
 
                                 <button
                                     onClick=${aggiungiAttivita}
-                                    class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm"
+                                    class="${`mt-3 w-full text-white px-4 py-2 rounded-lg font-medium text-sm ${attivitaInModifica ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}"
                                 >
-                                    ➕ Aggiungi Attività
+                                    ${attivitaInModifica ? '💾 Salva Modifiche' : '➕ Aggiungi Attività'}
                                 </button>
                             </div>
                         `}
