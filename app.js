@@ -198,9 +198,7 @@ function App() {
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(true);
     const [online, setOnline] = useState(navigator.onLine);
-    const [kgSecco, setKgSecco] = useState('');
     const [showReport, setShowReport] = useState(false);
-    const [categoriaLotto, setCategoriaLotto] = useState('frutta');
     const [creatingLotto, setCreatingLotto] = useState(false);
     const [showPulizieHACCP, setShowPulizieHACCP] = useState(false);
     const [pulizieHACCP, setPulizieHACCP] = useState([]);
@@ -227,12 +225,14 @@ function App() {
     };
     const [settimanaHACCP, setSettimanaHACCP] = useState(getSettimanaCorrente());
 
+    // Form nuova lavorazione con lista prodotti
     const [formData, setFormData] = useState({
-        prodotto: '',
-        fornitore: '',
-        kgAcquistati: '',
         dataInizio: new Date().toISOString().split('T')[0],
+        prodotti: [{ id: 'PROD_' + Date.now(), prodotto: '', fornitore: '', kgAcquistati: '', kgSecco: '', categoria: 'verdura' }]
     });
+    
+    // Per il completamento: kg secco e categoria per ogni prodotto
+    const [prodottiCompletamento, setProdottiCompletamento] = useState([]);
 
     const [attivitaGiornaliera, setAttivitaGiornaliera] = useState({
         data: new Date().toISOString().split('T')[0],
@@ -311,17 +311,24 @@ function App() {
     };
 
     const generaReportHACCP = () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('landscape', 'mm', 'a4');
-        
-        // Calcola date settimana
-        const inizioSettimana = new Date(settimanaHACCP);
-        const fineSettimana = new Date(inizioSettimana);
-        fineSettimana.setDate(fineSettimana.getDate() + 6);
-        
-        const formatDateIT = (d) => {
-            return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-        };
+        try {
+            // Verifica che jsPDF sia caricato
+            if (!window.jspdf) {
+                alert('❌ Errore: libreria PDF non caricata. Ricarica la pagina.');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'mm', 'a4');
+            
+            // Calcola date settimana
+            const inizioSettimana = new Date(settimanaHACCP);
+            const fineSettimana = new Date(inizioSettimana);
+            fineSettimana.setDate(fineSettimana.getDate() + 6);
+            
+            const formatDateIT = (d) => {
+                return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+            };
         
         // Titolo
         doc.setFontSize(16);
@@ -519,22 +526,34 @@ function App() {
         doc.save(nomeFile);
         
         alert(`✅ Report PDF generato!\n\nFile: ${nomeFile}`);
+        
+        } catch (error) {
+            console.error('Errore generazione PDF:', error);
+            alert(`❌ Errore generazione PDF: ${error.message}`);
+        }
     };
 
     const avviaNuovaLavorazione = async () => {
-        if (!formData.prodotto || !formData.fornitore || !formData.kgAcquistati) {
-            alert('Compila tutti i campi obbligatori');
+        // Verifica che tutti i prodotti abbiano i campi obbligatori
+        const prodottiValidi = formData.prodotti.filter(p => p.prodotto && p.fornitore && p.kgAcquistati);
+        
+        if (prodottiValidi.length === 0) {
+            alert('Inserisci almeno un prodotto con tutti i campi compilati');
             return;
         }
 
         const nuovaLav = {
             id: 'LAV_' + Date.now(),
-            ...formData,
+            dataInizio: formData.dataInizio,
+            prodotti: prodottiValidi.map(p => ({
+                ...p,
+                id: p.id || 'PROD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+            })),
             attivita: [],
             completata: false,
-            kgSecco: '',
             oreManooperaTotali: 0,
-            oreMacchinaTotali: 0
+            oreMacchinaTotali: 0,
+            note: ''
         };
 
         await API.salvaLavorazione(nuovaLav);
@@ -542,12 +561,30 @@ function App() {
         
         setCurrentLavorazione(nuovaLav);
         setFormData({
-            prodotto: '',
-            fornitore: '',
-            kgAcquistati: '',
-            dataInizio: new Date().toISOString().split('T')[0]
+            dataInizio: new Date().toISOString().split('T')[0],
+            prodotti: [{ id: 'PROD_' + Date.now(), prodotto: '', fornitore: '', kgAcquistati: '', kgSecco: '', categoria: 'verdura' }]
         });
         setShowForm(false);
+    };
+    
+    // Funzioni per gestire lista prodotti nel form
+    const aggiungiProdottoForm = () => {
+        setFormData({
+            ...formData,
+            prodotti: [...formData.prodotti, { id: 'PROD_' + Date.now(), prodotto: '', fornitore: '', kgAcquistati: '', kgSecco: '', categoria: 'verdura' }]
+        });
+    };
+    
+    const rimuoviProdottoForm = (index) => {
+        if (formData.prodotti.length <= 1) return;
+        const nuoviProdotti = formData.prodotti.filter((_, i) => i !== index);
+        setFormData({ ...formData, prodotti: nuoviProdotti });
+    };
+    
+    const aggiornaProdottoForm = (index, campo, valore) => {
+        const nuoviProdotti = [...formData.prodotti];
+        nuoviProdotti[index] = { ...nuoviProdotti[index], [campo]: valore };
+        setFormData({ ...formData, prodotti: nuoviProdotti });
     };
 
     const aggiungiAttivita = async () => {
@@ -607,8 +644,10 @@ function App() {
             return;
         }
 
-        if (!kgSecco) {
-            alert('Inserisci i kg di prodotto secco ottenuto');
+        // Verifica che tutti i prodotti abbiano kg secco e categoria
+        const tuttiCompilati = prodottiCompletamento.every(p => p.kgSecco && p.categoria);
+        if (!tuttiCompilati) {
+            alert('Inserisci kg secco e categoria per tutti i prodotti');
             return;
         }
 
@@ -625,49 +664,96 @@ function App() {
         const oreDisidratatore100 = calcolaOreDisidratatore(currentLavorazione.attivita, '100');
         const oreMacchinaTotali = oreDisidratatore40 + oreDisidratatore100;
 
+        // Calcola totale kg freschi per ripartizione proporzionale
+        const totaleKgFreschi = prodottiCompletamento.reduce((sum, p) => sum + (parseFloat(p.kgAcquistati) || 0), 0);
+
+        // Aggiorna prodotti con kg secco e categoria
+        const prodottiAggiornati = prodottiCompletamento.map(p => ({
+            ...p,
+            kgSecco: p.kgSecco,
+            categoria: p.categoria
+        }));
+
         const lavorazioneCompletata = {
             ...currentLavorazione,
+            prodotti: prodottiAggiornati,
             completata: true,
-            kgSecco: kgSecco,
             oreManooperaTotali: oreManooperaTotali,
             oreMacchinaTotali: oreMacchinaTotali
         };
 
         await API.salvaLavorazione(lavorazioneCompletata);
 
-        // Crea il lotto automaticamente
-        const datiLotto = {
-            prodotto: currentLavorazione.prodotto,
-            fornitore: currentLavorazione.fornitore,
-            dataInizio: currentLavorazione.dataInizio,
-            kgFreschi: currentLavorazione.kgAcquistati,
-            kgSecco: kgSecco,
-            oreManodopera: oreManooperaTotali,
-            oreDisidratatore40: oreDisidratatore40,
-            oreDisidratatore100: oreDisidratatore100,
-            categoria: categoriaLotto
-        };
+        // Crea un lotto per ogni prodotto con ripartizione proporzionale
+        const lottiCreati = [];
+        const lottiErrori = [];
+        
+        for (const prod of prodottiCompletamento) {
+            const kgFreschiProdotto = parseFloat(prod.kgAcquistati) || 0;
+            const proporzione = totaleKgFreschi > 0 ? kgFreschiProdotto / totaleKgFreschi : 0;
+            
+            const datiLotto = {
+                prodotto: prod.prodotto,
+                fornitore: prod.fornitore,
+                dataInizio: currentLavorazione.dataInizio,
+                kgFreschi: prod.kgAcquistati,
+                kgSecco: prod.kgSecco,
+                oreManodopera: oreManooperaTotali * proporzione,
+                oreDisidratatore40: oreDisidratatore40 * proporzione,
+                oreDisidratatore100: oreDisidratatore100 * proporzione,
+                categoria: prod.categoria
+            };
 
-        const risultatoLotto = await API.creaLotto(datiLotto);
+            const risultatoLotto = await API.creaLotto(datiLotto);
+            
+            if (risultatoLotto.success) {
+                lottiCreati.push({ prodotto: prod.prodotto, lotNumber: risultatoLotto.lotNumber });
+            } else {
+                lottiErrori.push({ prodotto: prod.prodotto, error: risultatoLotto.error });
+            }
+        }
         
         setCreatingLotto(false);
 
-        if (risultatoLotto.success) {
-            alert(`✅ Lavorazione completata!\n\n📦 Lotto ${risultatoLotto.lotNumber} creato automaticamente nel foglio Lotti!`);
-        } else {
-            alert(`✅ Lavorazione completata!\n\n⚠️ Errore creazione lotto: ${risultatoLotto.error}\n\nPuoi crearlo manualmente.`);
+        // Messaggio riepilogativo
+        let messaggio = '✅ Lavorazione completata!\n\n';
+        
+        if (lottiCreati.length > 0) {
+            messaggio += '📦 Lotti creati:\n';
+            lottiCreati.forEach(l => {
+                messaggio += `  • ${l.prodotto}: ${l.lotNumber}\n`;
+            });
         }
+        
+        if (lottiErrori.length > 0) {
+            messaggio += '\n⚠️ Errori:\n';
+            lottiErrori.forEach(e => {
+                messaggio += `  • ${e.prodotto}: ${e.error}\n`;
+            });
+        }
+        
+        alert(messaggio);
 
         await caricaDati();
         
         setCurrentLavorazione(null);
-        setKgSecco('');
-        setCategoriaLotto('frutta');
+        setProdottiCompletamento([]);
     };
 
     const riprendiLavorazione = (lav) => {
         setCurrentLavorazione(lav);
-        setKgSecco(lav.kgSecco || '');
+        // Inizializza prodottiCompletamento con i prodotti della lavorazione
+        setProdottiCompletamento(lav.prodotti.map(p => ({
+            ...p,
+            kgSecco: p.kgSecco || '',
+            categoria: p.categoria || 'verdura'
+        })));
+    };
+
+    const aggiornaProdottoCompletamento = (index, campo, valore) => {
+        const nuovi = [...prodottiCompletamento];
+        nuovi[index] = { ...nuovi[index], [campo]: valore };
+        setProdottiCompletamento(nuovi);
     };
 
     const eliminaLavorazione = async (id) => {
@@ -895,52 +981,73 @@ function App() {
                 ${showForm && html`
                     <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
                         <h2 class="text-xl font-bold text-gray-800 mb-4">Nuova Lavorazione</h2>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Prodotto *</label>
-                                <input
-                                    type="text"
-                                    value=${formData.prodotto}
-                                    onInput=${(e) => setFormData({...formData, prodotto: e.target.value})}
-                                    placeholder="Es: Mele, Pomodori..."
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Fornitore *</label>
-                                <input
-                                    type="text"
-                                    value=${formData.fornitore}
-                                    onInput=${(e) => setFormData({...formData, fornitore: e.target.value})}
-                                    placeholder="Nome fornitore"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kg Acquistati *</label>
-                                <input
-                                    type="number"
-                                    value=${formData.kgAcquistati}
-                                    onInput=${(e) => setFormData({...formData, kgAcquistati: e.target.value})}
-                                    placeholder="100"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Data Inizio</label>
-                                <input
-                                    type="date"
-                                    value=${formData.dataInizio}
-                                    onInput=${(e) => setFormData({...formData, dataInizio: e.target.value})}
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                />
-                            </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Data Inizio</label>
+                            <input
+                                type="date"
+                                value=${formData.dataInizio}
+                                onInput=${(e) => setFormData({...formData, dataInizio: e.target.value})}
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            />
                         </div>
+                        
+                        <h3 class="font-medium text-gray-700 mb-2">📦 Prodotti</h3>
+                        
+                        <div class="space-y-3">
+                            ${formData.prodotti.map((prod, index) => html`
+                                <div key=${prod.id} class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm font-medium text-gray-600">Prodotto ${index + 1}</span>
+                                        ${formData.prodotti.length > 1 && html`
+                                            <button
+                                                onClick=${() => rimuoviProdottoForm(index)}
+                                                class="text-red-500 hover:text-red-700 text-sm"
+                                            >
+                                                🗑️ Rimuovi
+                                            </button>
+                                        `}
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value=${prod.prodotto}
+                                            onInput=${(e) => aggiornaProdottoForm(index, 'prodotto', e.target.value)}
+                                            placeholder="Prodotto *"
+                                            class="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        />
+                                        <input
+                                            type="text"
+                                            value=${prod.fornitore}
+                                            onInput=${(e) => aggiornaProdottoForm(index, 'fornitore', e.target.value)}
+                                            placeholder="Fornitore *"
+                                            class="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        />
+                                        <input
+                                            type="number"
+                                            value=${prod.kgAcquistati}
+                                            onInput=${(e) => aggiornaProdottoForm(index, 'kgAcquistati', e.target.value)}
+                                            placeholder="Kg freschi *"
+                                            step="0.1"
+                                            class="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            `)}
+                        </div>
+                        
+                        <button
+                            onClick=${aggiungiProdottoForm}
+                            class="mt-3 w-full bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium"
+                        >
+                            ➕ Aggiungi altro prodotto
+                        </button>
+                        
                         <button
                             onClick=${avviaNuovaLavorazione}
-                            class="mt-4 w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium"
+                            class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
                         >
-                            Avvia Lavorazione
+                            ▶️ Avvia Lavorazione
                         </button>
                     </div>
                 `}
@@ -982,42 +1089,68 @@ function App() {
                         
                         ${(() => {
                             const completate = lavorazioni.filter(l => l.completata);
-                            const totKgFreschi = completate.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
-                            const totKgSecchi = completate.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
+                            
+                            // Calcola totali sommando i prodotti di ogni lavorazione
+                            let totKgFreschi = 0;
+                            let totKgSecchi = 0;
+                            completate.forEach(l => {
+                                (l.prodotti || []).forEach(p => {
+                                    totKgFreschi += parseFloat(p.kgAcquistati) || 0;
+                                    totKgSecchi += parseFloat(p.kgSecco) || 0;
+                                });
+                            });
+                            
                             const totOreManodopera = completate.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
                             const totOreMacchina = completate.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
                             const resaMedia = totKgFreschi > 0 ? ((totKgSecchi / totKgFreschi) * 100).toFixed(1) : 0;
                             
+                            // Statistiche per prodotto
                             const perProdotto = {};
                             completate.forEach(l => {
-                                const prod = l.prodotto || 'Sconosciuto';
-                                if (!perProdotto[prod]) {
-                                    perProdotto[prod] = { kgFreschi: 0, kgSecchi: 0, count: 0 };
-                                }
-                                perProdotto[prod].kgFreschi += parseFloat(l.kgAcquistati) || 0;
-                                perProdotto[prod].kgSecchi += parseFloat(l.kgSecco) || 0;
-                                perProdotto[prod].count += 1;
+                                (l.prodotti || []).forEach(p => {
+                                    const prod = p.prodotto || 'Sconosciuto';
+                                    if (!perProdotto[prod]) {
+                                        perProdotto[prod] = { kgFreschi: 0, kgSecchi: 0, count: 0 };
+                                    }
+                                    perProdotto[prod].kgFreschi += parseFloat(p.kgAcquistati) || 0;
+                                    perProdotto[prod].kgSecchi += parseFloat(p.kgSecco) || 0;
+                                    perProdotto[prod].count += 1;
+                                });
                             });
                             
+                            // Statistiche per fornitore
                             const perFornitore = {};
                             completate.forEach(l => {
-                                const forn = l.fornitore || 'Sconosciuto';
-                                if (!perFornitore[forn]) {
-                                    perFornitore[forn] = { kgFreschi: 0, count: 0 };
-                                }
-                                perFornitore[forn].kgFreschi += parseFloat(l.kgAcquistati) || 0;
-                                perFornitore[forn].count += 1;
+                                (l.prodotti || []).forEach(p => {
+                                    const forn = p.fornitore || 'Sconosciuto';
+                                    if (!perFornitore[forn]) {
+                                        perFornitore[forn] = { kgFreschi: 0, count: 0 };
+                                    }
+                                    perFornitore[forn].kgFreschi += parseFloat(p.kgAcquistati) || 0;
+                                    perFornitore[forn].count += 1;
+                                });
                             });
                             
                             const oggi = new Date();
                             const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
                             const questoMese = completate.filter(l => new Date(l.dataInizio) >= inizioMese);
-                            const kgMese = questoMese.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
+                            let kgMese = 0;
+                            questoMese.forEach(l => {
+                                (l.prodotti || []).forEach(p => {
+                                    kgMese += parseFloat(p.kgAcquistati) || 0;
+                                });
+                            });
                             
                             const inizioAnno = new Date(oggi.getFullYear(), 0, 1);
                             const questAnno = completate.filter(l => new Date(l.dataInizio) >= inizioAnno);
-                            const kgAnnoFreschi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgAcquistati) || 0), 0);
-                            const kgAnnoSecchi = questAnno.reduce((sum, l) => sum + (parseFloat(l.kgSecco) || 0), 0);
+                            let kgAnnoFreschi = 0;
+                            let kgAnnoSecchi = 0;
+                            questAnno.forEach(l => {
+                                (l.prodotti || []).forEach(p => {
+                                    kgAnnoFreschi += parseFloat(p.kgAcquistati) || 0;
+                                    kgAnnoSecchi += parseFloat(p.kgSecco) || 0;
+                                });
+                            });
                             const oreManodoperaAnno = questAnno.reduce((sum, l) => sum + (l.oreManooperaTotali || 0), 0);
                             const oreMacchinaAnno = questAnno.reduce((sum, l) => sum + (l.oreMacchinaTotali || 0), 0);
                             const resaAnno = kgAnnoFreschi > 0 ? ((kgAnnoSecchi / kgAnnoFreschi) * 100).toFixed(1) : 0;
@@ -1140,50 +1273,69 @@ function App() {
                             <h2 class="text-xl font-bold text-blue-800">
                                 ${currentLavorazione.completata ? '📋 Completata' : '🔵 In Corso'}
                             </h2>
-                            <p class="text-gray-600">${currentLavorazione.prodotto} - ${currentLavorazione.kgAcquistati} kg</p>
-                            <p class="text-sm text-gray-500">
-                                ${currentLavorazione.fornitore} | ${new Date(currentLavorazione.dataInizio).toLocaleDateString('it-IT')}
+                            <p class="text-sm text-gray-500 mb-2">
+                                📅 ${new Date(currentLavorazione.dataInizio).toLocaleDateString('it-IT')}
                             </p>
+                            <!-- Lista prodotti -->
+                            <div class="space-y-1">
+                                ${(currentLavorazione.prodotti || []).map(prod => html`
+                                    <div class="flex justify-between items-center bg-gray-50 px-2 py-1 rounded text-sm">
+                                        <span class="font-medium">${prod.prodotto}</span>
+                                        <span class="text-gray-600">${prod.kgAcquistati} kg - ${prod.fornitore}</span>
+                                    </div>
+                                `)}
+                            </div>
                         </div>
 
                         ${!currentLavorazione.completata && html`
                             <div class="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                                <h3 class="font-bold text-amber-800 mb-2">📦 Completa e Crea Lotto</h3>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kg Secco *</label>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            value=${kgSecco}
-                                            onInput=${(e) => setKgSecco(e.target.value)}
-                                            placeholder="Kg prodotto secco"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-                                        <select
-                                            value=${categoriaLotto}
-                                            onChange=${(e) => setCategoriaLotto(e.target.value)}
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                        >
-                                            <option value="frutta">🍎 Frutta</option>
-                                            <option value="verdura">🥕 Verdura</option>
-                                            <option value="erbe">🌿 Erbe</option>
-                                            <option value="funghi">🍄 Funghi</option>
-                                        </select>
-                                    </div>
+                                <h3 class="font-bold text-amber-800 mb-3">📦 Completa e Crea Lotti</h3>
+                                
+                                <div class="space-y-3">
+                                    ${prodottiCompletamento.map((prod, index) => html`
+                                        <div class="bg-white p-3 rounded-lg border border-amber-200">
+                                            <div class="font-medium text-gray-800 mb-2">
+                                                ${prod.prodotto} (${prod.kgAcquistati} kg)
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Kg Secco *</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        value=${prod.kgSecco}
+                                                        onInput=${(e) => aggiornaProdottoCompletamento(index, 'kgSecco', e.target.value)}
+                                                        placeholder="Kg secco"
+                                                        class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Categoria *</label>
+                                                    <select
+                                                        value=${prod.categoria}
+                                                        onChange=${(e) => aggiornaProdottoCompletamento(index, 'categoria', e.target.value)}
+                                                        class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                    >
+                                                        <option value="frutta">🍎 Frutta</option>
+                                                        <option value="verdura">🥕 Verdura</option>
+                                                        <option value="erbe">🌿 Erbe</option>
+                                                        <option value="funghi">🍄 Funghi</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `)}
                                 </div>
+                                
                                 <button
                                     onClick=${completaLavorazione}
                                     disabled=${creatingLotto}
                                     class="mt-3 w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium"
                                 >
-                                    ${creatingLotto ? '⏳ Creazione lotto...' : '✅ Completa e Crea Lotto'}
+                                    ${creatingLotto ? '⏳ Creazione lotti...' : `✅ Completa e Crea ${prodottiCompletamento.length} Lott${prodottiCompletamento.length > 1 ? 'i' : 'o'}`}
                                 </button>
                                 <p class="text-xs text-gray-500 mt-2">
-                                    Il lotto verrà creato automaticamente nel foglio "Gestione Lotti"
+                                    Ore ripartite proporzionalmente ai kg freschi
                                 </p>
                             </div>
                         `}
@@ -1191,11 +1343,15 @@ function App() {
                         ${currentLavorazione.completata && html`
                             <div class="mb-4 bg-green-50 rounded-lg p-4 border border-green-200">
                                 <h3 class="font-bold text-green-800 mb-2">📊 Riepilogo</h3>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div class="bg-white p-2 rounded text-center">
-                                        <div class="text-xs text-gray-600">Secco</div>
-                                        <div class="text-lg font-bold text-green-600">${currentLavorazione.kgSecco} kg</div>
-                                    </div>
+                                <div class="space-y-2 mb-3">
+                                    ${(currentLavorazione.prodotti || []).map(prod => html`
+                                        <div class="flex justify-between items-center bg-white px-2 py-1 rounded text-sm">
+                                            <span>${prod.prodotto}</span>
+                                            <span class="font-medium text-green-600">${prod.kgSecco} kg secco (${((parseFloat(prod.kgSecco) / parseFloat(prod.kgAcquistati)) * 100).toFixed(1)}%)</span>
+                                        </div>
+                                    `)}
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
                                     <div class="bg-white p-2 rounded text-center">
                                         <div class="text-xs text-gray-600">Manodopera</div>
                                         <div class="text-lg font-bold text-blue-600">${formatOre(currentLavorazione.oreManooperaTotali)}</div>
@@ -1403,70 +1559,77 @@ function App() {
                         <div class="space-y-3">
                             ${lavorazioni
                                 .sort((a, b) => new Date(b.dataInizio) - new Date(a.dataInizio))
-                                .map(lav => html`
-                                <div class="${`border rounded-xl overflow-hidden ${lav.completata ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}">
-                                    <!-- Header card -->
-                                    <div class="p-3 pb-2">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <h3 class="font-bold text-gray-800 text-base">${lav.prodotto}</h3>
-                                            <span class="${`px-2 py-1 rounded-full text-xs font-medium ${lav.completata ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}">
-                                                ${lav.completata ? '✅ Completata' : '⏳ In corso'}
-                                            </span>
-                                        </div>
-                                        
-                                        <!-- Info grid -->
-                                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-2">
-                                            <div class="text-gray-600">
-                                                <span class="text-gray-400">📦</span> ${lav.kgAcquistati} kg freschi
-                                            </div>
-                                            <div class="text-gray-600">
-                                                <span class="text-gray-400">🏪</span> ${lav.fornitore}
-                                            </div>
-                                            <div class="text-gray-600">
-                                                <span class="text-gray-400">📅</span> ${new Date(lav.dataInizio).toLocaleDateString('it-IT')}
-                                            </div>
-                                            <div class="text-gray-600">
-                                                <span class="text-gray-400">📝</span> ${lav.attivita.length} ${lav.attivita.length === 1 ? 'giorno' : 'giorni'}
-                                            </div>
-                                        </div>
-                                        
-                                        ${lav.completata && html`
-                                            <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-green-200">
-                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-orange-600">
-                                                    🥕 ${lav.kgSecco} kg secco
-                                                </span>
-                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-blue-600">
-                                                    👷 ${formatOre(lav.oreManooperaTotali)}
-                                                </span>
-                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-purple-600">
-                                                    ⚙️ ${formatOre(lav.oreMacchinaTotali)}
-                                                </span>
-                                                <span class="bg-white px-2 py-1 rounded text-xs font-medium text-green-600">
-                                                    📊 ${((parseFloat(lav.kgSecco) / parseFloat(lav.kgAcquistati)) * 100).toFixed(1)}% resa
-                                                </span>
-                                            </div>
-                                        `}
-                                    </div>
+                                .map(lav => {
+                                    const prodotti = lav.prodotti || [];
+                                    const totaleKgFreschi = prodotti.reduce((sum, p) => sum + (parseFloat(p.kgAcquistati) || 0), 0);
+                                    const totaleKgSecchi = prodotti.reduce((sum, p) => sum + (parseFloat(p.kgSecco) || 0), 0);
+                                    const nomeProdotti = prodotti.map(p => p.prodotto).join(', ');
+                                    const nomeFornitore = [...new Set(prodotti.map(p => p.fornitore))].join(', ');
                                     
-                                    <!-- Footer con pulsanti -->
-                                    <div class="${`flex justify-end gap-2 p-2 ${lav.completata ? 'bg-green-100' : 'bg-yellow-100'}`}">
-                                        ${currentLavorazione?.id !== lav.id && html`
+                                    return html`
+                                    <div class="${`border rounded-xl overflow-hidden ${lav.completata ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}">
+                                        <!-- Header card -->
+                                        <div class="p-3 pb-2">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h3 class="font-bold text-gray-800 text-base">${nomeProdotti || 'Lavorazione'}</h3>
+                                                <span class="${`px-2 py-1 rounded-full text-xs font-medium ${lav.completata ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}">
+                                                    ${lav.completata ? '✅ Completata' : '⏳ In corso'}
+                                                </span>
+                                            </div>
+                                            
+                                            <!-- Info grid -->
+                                            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-2">
+                                                <div class="text-gray-600">
+                                                    <span class="text-gray-400">📦</span> ${totaleKgFreschi} kg freschi
+                                                </div>
+                                                <div class="text-gray-600">
+                                                    <span class="text-gray-400">🏪</span> ${nomeFornitore}
+                                                </div>
+                                                <div class="text-gray-600">
+                                                    <span class="text-gray-400">📅</span> ${new Date(lav.dataInizio).toLocaleDateString('it-IT')}
+                                                </div>
+                                                <div class="text-gray-600">
+                                                    <span class="text-gray-400">📝</span> ${lav.attivita.length} ${lav.attivita.length === 1 ? 'giorno' : 'giorni'}
+                                                </div>
+                                            </div>
+                                            
+                                            ${lav.completata && html`
+                                                <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-green-200">
+                                                    <span class="bg-white px-2 py-1 rounded text-xs font-medium text-orange-600">
+                                                        🥕 ${totaleKgSecchi.toFixed(1)} kg secco
+                                                    </span>
+                                                    <span class="bg-white px-2 py-1 rounded text-xs font-medium text-blue-600">
+                                                        👷 ${formatOre(lav.oreManooperaTotali)}
+                                                    </span>
+                                                    <span class="bg-white px-2 py-1 rounded text-xs font-medium text-purple-600">
+                                                        ⚙️ ${formatOre(lav.oreMacchinaTotali)}
+                                                    </span>
+                                                    <span class="bg-white px-2 py-1 rounded text-xs font-medium text-green-600">
+                                                        📊 ${totaleKgFreschi > 0 ? ((totaleKgSecchi / totaleKgFreschi) * 100).toFixed(1) : 0}% resa
+                                                    </span>
+                                                </div>
+                                            `}
+                                        </div>
+                                        
+                                        <!-- Footer con pulsanti -->
+                                        <div class="${`flex justify-end gap-2 p-2 ${lav.completata ? 'bg-green-100' : 'bg-yellow-100'}`}">
+                                            ${currentLavorazione?.id !== lav.id && html`
+                                                <button
+                                                    onClick=${() => riprendiLavorazione(lav)}
+                                                    class="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm"
+                                                >
+                                                    ${lav.completata ? '👁️ Vedi' : '📝 Modifica'}
+                                                </button>
+                                            `}
                                             <button
-                                                onClick=${() => riprendiLavorazione(lav)}
-                                                class="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm"
+                                                onClick=${() => eliminaLavorazione(lav.id)}
+                                                class="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm"
                                             >
-                                                ${lav.completata ? '👁️ Vedi' : '📝 Modifica'}
+                                                🗑️ Elimina
                                             </button>
-                                        `}
-                                        <button
-                                            onClick=${() => eliminaLavorazione(lav.id)}
-                                            class="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm"
-                                        >
-                                            🗑️ Elimina
-                                        </button>
+                                        </div>
                                     </div>
-                                </div>
-                            `)}
+                                `})}
                         </div>
                     `}
                 </div>
