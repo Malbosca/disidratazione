@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Lotti Malbosca">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#E07B00">
+  <meta name="description" content="Gestione lotti disidratazione Malbosca">
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  
+  <title>Malbosca - Gestione Lotti</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary: #E07B00;
+      --primary-light: #FFF4E6;
+      --primary-dark: #C56A00;
+      --success: #22C55E;
+      --success-light: #DCFCE7;
+      --warning: #F59E0B;
+      --warning-light: #FEF3C7;
+      --danger: #EF4444;
+      --danger-light: #FEE2E2;
+      --gray-50: #FAFAFA;
+      --gray-100: #F4F4F5;
+      --gray-200: #E4E4E7;
+      --gray-300: #D4D4D8;
+      --gray-400: #A1A1AA;
+      --gray-500: #71717A;
+      --gray-600: #52525B;
+      --gray-700: #3F3F46;
+      --gray-800: #27272A;
+      --gray-900: #18181B;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --radius-xs: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      padding: 16px 20px;
+      padding-top: max(env(safe-area-inset-top, 16px), 16px);
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .logo h1 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .logo p {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    
+    .header-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ADE80;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      border: 2px solid var(--primary);
+    }
+    
+    .status-dot.offline { background: var(--danger); }
+    
+    /* Stats Bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 12px 20px 16px;
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #A85C00 100%);
+    }
+    
+    .stat-item {
+      text-align: center;
+      color: white;
+    }
+    
+    .stat-item .value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    
+    .stat-item .label {
+      font-size: 10px;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Main */
+    .main {
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+    
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    
+    .tabs::-webkit-scrollbar { display: none; }
+    
+    .tab {
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: none;
+      background: white;
+      color: var(--gray-500);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    
+    .tab.active {
+      background: var(--primary);
+      color: white;
+    }
+    
+    /* Section */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .section-count {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+    
+    /* Batch Card */
+    .batch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .batch-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    
+    .batch-card:active {
+      transform: scale(0.98);
+    }
+    
+    .batch-card.selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    .batch-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .batch-emoji {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    
+    .batch-emoji.frutta { background: #FEE2E2; }
+    .batch-emoji.verdura { background: #DCFCE7; }
+    .batch-emoji.erbe { background: #F3E8FF; }
+    .batch-emoji.funghi { background: #FEF3C7; }
+    
+    .batch-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .batch-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    
+    .batch-lot {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+    }
+    
+    .batch-status {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    
+    .batch-status.complete {
+      background: var(--success-light);
+      color: #16A34A;
+    }
+    
+    .batch-status.incomplete {
+      background: var(--warning-light);
+      color: #D97706;
+    }
+    
+    .batch-status.expired {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+    
+    .batch-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: 4px;
+    }
+    
+    .batch-date {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+    
+    .batch-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--gray-100);
+    }
+    
+    .batch-stat {
+      text-align: center;
+    }
+    
+    .batch-stat .value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+    
+    .batch-stat .value.highlight {
+      color: var(--success);
+    }
+    
+    .batch-stat .label {
+      font-size: 10px;
+      color: var(--gray-400);
+      text-transform: uppercase;
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    
+    .empty-state .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    
+    .empty-state h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+    }
+    
+    .empty-state p {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 24px;
+    }
+    
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 20px rgba(224, 123, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 40;
+      transition: all 0.2s;
+    }
+    
+    .fab:active {
+      transform: scale(0.95);
+    }
+    
+    .fab svg {
+      width: 28px;
+      height: 28px;
+    }
+    
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid var(--gray-200);
+      padding: 8px 16px;
+      padding-bottom: max(env(safe-area-inset-bottom, 8px), 8px);
+      display: flex;
+      justify-content: space-around;
+      z-index: 50;
+    }
+    
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      color: var(--gray-400);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    
+    .nav-item.active {
+      color: var(--primary);
+    }
+    
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+    
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 500px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.3s ease-out;
+    }
+    
+    .modal-overlay.show .modal {
+      transform: translateY(0);
+    }
+    
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--gray-300);
+      border-radius: 2px;
+      margin: 12px auto;
+      flex-shrink: 0;
+    }
+    
+    .modal-header {
+      padding: 4px 20px 16px;
+      border-bottom: 1px solid var(--gray-100);
+      flex-shrink: 0;
+    }
+    
+    .modal-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-800);
+    }
+    
+    .modal-subtitle {
+      font-size: 13px;
+      color: var(--primary);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .modal-footer {
+      padding: 16px 20px;
+      padding-bottom: max(env(safe-area-inset-bottom, 16px), 16px);
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    
+    /* Wizard Steps */
+    .wizard-nav {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    
+    .wizard-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gray-200);
+      transition: all 0.3s;
+    }
+    
+    .wizard-dot.active {
+      width: 24px;
+      border-radius: 4px;
+      background: var(--primary);
+    }
+    
+    .wizard-dot.done {
+      background: var(--success);
+    }
+    
+    .step-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .step-title .emoji {
+      font-size: 20px;
+    }
+    
+    /* Form */
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-600);
+      margin-bottom: 6px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-family: inherit;
+      transition: all 0.2s;
+      background: white;
+      -webkit-appearance: none;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    .form-input::placeholder {
+      color: var(--gray-400);
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    
+    /* Live Preview */
+    .live-preview {
+      background: linear-gradient(135deg, var(--primary-light) 0%, #FFF9F0 100%);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+    
+    .live-preview h4 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    
+    .preview-item {
+      text-align: center;
+      background: white;
+      padding: 10px;
+      border-radius: var(--radius-xs);
+    }
+    
+    .preview-item .value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray-800);
+    }
+    
+    .preview-item .value.success {
+      color: var(--success);
+    }
+    
+    .preview-item .label {
+      font-size: 10px;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+    
+    /* Buttons */
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+    }
+    
+    .btn-secondary {
+      background: var(--gray-100);
+      color: var(--gray-600);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(224, 123, 0, 0.3);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-danger {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+    
+    /* Detail View */
+    .detail-section {
+      margin-bottom: 20px;
+    }
+    
+    .detail-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    
+    .detail-box {
+      background: var(--gray-50);
+      padding: 12px;
+      border-radius: var(--radius-xs);
+    }
+    
+    .detail-box .label {
+      font-size: 11px;
+      color: var(--gray-500);
+      margin-bottom: 4px;
+    }
+    
+    .detail-box .value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+    
+    .detail-box.highlight {
+      background: var(--success-light);
+    }
+    
+    .detail-box.highlight .value {
+      color: var(--success);
+    }
+    
+    /* Site Comparison */
+    .site-comparison {
+      background: var(--primary-light);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 16px;
+    }
+    
+    .site-comparison h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .comparison-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(224, 123, 0, 0.1);
+    }
+    
+    .comparison-row:last-child {
+      border-bottom: none;
+    }
+    
+    .comparison-row .label {
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+    
+    .comparison-row .value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .comparison-row .value.success {
+      color: var(--success);
+    }
+    
+    .comparison-row .value.danger {
+      color: var(--danger);
+    }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--gray-800);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 200;
+      opacity: 0;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Filters in detail */
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: white;
+      border: 1px solid var(--gray-200);
+      font-size: 12px;
+      color: var(--gray-600);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .filter-chip.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+    
+    /* PWA Install Banner */
+    .install-banner {
+      position: fixed;
+      bottom: 70px;
+      left: 16px;
+      right: 16px;
+      background: white;
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 60;
+      transform: translateY(200px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    
+    .install-banner.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .install-banner .icon {
+      font-size: 32px;
+    }
+    
+    .install-banner .content {
+      flex: 1;
+    }
+    
+    .install-banner h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+    
+    .install-banner p {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+    
+    .install-banner .actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .install-banner button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      border: none;
+    }
+    
+    .install-banner .skip {
+      background: var(--gray-100);
+      color: var(--gray-600);
+    }
+    
+    .install-banner .install {
+      background: var(--primary);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/lotti-disidratazione/service-worker.js')
+          .catch(err => console.log('SW error:', err));
+      });
+    }
+
+    // API
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyb0UQrTYHj9GFFnDBmF4s29bnB3M71zNKKxzqsM7T3APOw5I34-sAnG2PQev6kp9oi/exec';
+    const PRICES_API = 'https://sparkling-sun-07ad.aziendamalbosca.workers.dev/';
+
+    const api = {
+      async getAll() {
+        const res = await fetch(`${API_URL}?action=getAll`);
+        const data = await res.json();
+        return data.data || [];
+      },
+      async add(batch) {
+        const res = await fetch(`${API_URL}?action=add&data=${encodeURIComponent(JSON.stringify(batch))}`);
+        return res.json();
+      },
+      async update(batch) {
+        const res = await fetch(`${API_URL}?action=update&data=${encodeURIComponent(JSON.stringify(batch))}`);
+        return res.json();
+      },
+      async delete(id) {
+        const res = await fetch(`${API_URL}?action=delete&id=${id}`);
+        return res.json();
+      }
+    };
+
+    // Utils
+    const safeNum = (v) => parseFloat(v) || 0;
+    
+    const getDayOfYear = (date) => {
+      const d = new Date(date);
+      const start = new Date(d.getFullYear(), 0, 1);
+      return Math.floor((d - start) / (1000 * 60 * 60 * 24)) + 1;
+    };
+
+    const generateLotNumber = (date) => {
+      const d = new Date(date);
+      const day = getDayOfYear(d).toString().padStart(3, '0');
+      const year = d.getFullYear().toString().slice(-2);
+      return `0${day}${year}`;
+    };
+
+    const formatDate = (date) => date ? new Date(date).toLocaleDateString('it-IT') : '—';
+    
+    const getExpiryDate = (date) => {
+      if (!date) return null;
+      const d = new Date(date);
+      d.setFullYear(d.getFullYear() + 2);
+      d.setMonth(d.getMonth() + 6);
+      return d;
+    };
+
+    const formatExpiry = (date) => {
+      const exp = getExpiryDate(date);
+      return exp ? exp.toLocaleDateString('it-IT', { month: '2-digit', year: 'numeric' }) : '—';
+    };
+
+    const isExpired = (date) => {
+      const exp = getExpiryDate(date);
+      return exp ? exp <= new Date() : false;
+    };
+
+    const isExpiringSoon = (date) => {
+      const exp = getExpiryDate(date);
+      if (!exp) return false;
+      const soon = new Date();
+      soon.setMonth(soon.getMonth() + 3);
+      return exp <= soon && exp > new Date();
+    };
+
+    const getCalc = (b) => {
+      const dehy40 = safeNum(b.dehydrator40Hours) * safeNum(b.dehydrator40CostPerHour);
+      const dehy100 = safeNum(b.dehydrator100Hours) * safeNum(b.dehydrator100CostPerHour);
+      const dehyTotal = dehy40 + dehy100;
+      const rawCost = safeNum(b.freshProductKg) * safeNum(b.rawMaterialCostPerKg);
+      const laborCost = safeNum(b.laborHours) * safeNum(b.laborCostPerHour);
+      const extra = safeNum(b.extraCost);
+      const prodCost = rawCost + laborCost + dehyTotal + extra;
+      
+      const dryKg = safeNum(b.dryProductKg);
+      const costPerKg = dryKg > 0 ? prodCost / dryKg : 0;
+      const markup = safeNum(b.markupPercentage);
+      const pricePerKg = costPerKg * (1 + markup / 100);
+      const vat = safeNum(b.vatRate);
+      const pricePerKgVat = pricePerKg * (1 + vat / 100);
+      
+      const bagKg = safeNum(b.bagWeightGrams) / 1000;
+      const numBags = bagKg > 0 ? Math.floor(dryKg / bagKg) : 0;
+      const packCost = safeNum(b.packagingCostPerBag);
+      const labelCost = safeNum(b.labelCostPerBag);
+      const bagLabor = safeNum(b.bagLaborCost);
+      const prodCostBag = bagKg * costPerKg;
+      const costPerBag = prodCostBag + packCost + labelCost + bagLabor;
+      const pricePerBag = costPerBag * (1 + markup / 100);
+      const pricePerBagVat = pricePerBag * (1 + vat / 100);
+      
+      const yieldPct = safeNum(b.freshProductKg) > 0 ? (dryKg / safeNum(b.freshProductKg)) * 100 : 0;
+      const isComplete = safeNum(b.freshProductKg) > 0 && dryKg > 0;
+      
+      const packTotal = numBags * (packCost + labelCost + bagLabor);
+      const totalCost = prodCost + packTotal;
+      
+      return { 
+        rawCost, laborCost, dehyTotal, extra, prodCost, 
+        costPerKg, pricePerKg, pricePerKgVat, 
+        numBags, costPerBag, pricePerBag, pricePerBagVat,
+        yieldPct, isComplete, totalCost 
+      };
+    };
+
+    const categoryEmoji = {
+      frutta: '🍎',
+      verdura: '🥬',
+      erbe: '🌿',
+      funghi: '🍄'
+    };
+
+    // Icons
+    const Icons = {
+      Plus: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+      Home: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+      Box: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>,
+      Chart: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+      Menu: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>,
+      Search: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
+      Back: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>,
+      Edit: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+      Trash: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+    };
+
+    // Main App
+    function App() {
+      const [batches, setBatches] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [online, setOnline] = useState(true);
+      const [view, setView] = useState('home');
+      const [filter, setFilter] = useState('all');
+      const [showModal, setShowModal] = useState(false);
+      const [modalMode, setModalMode] = useState('create');
+      const [selectedBatch, setSelectedBatch] = useState(null);
+      const [step, setStep] = useState(1);
+      const [toast, setToast] = useState(null);
+      const [sitePrices, setSitePrices] = useState({});
+      const [showInstall, setShowInstall] = useState(false);
+      const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+      const emptyForm = {
+        productType: '', productCategory: 'verdura', processingDate: new Date().toISOString().split('T')[0],
+        freshProductKg: '', rawMaterialCostPerKg: '', laborHours: '', laborCostPerHour: '',
+        dehydrator40Hours: '', dehydrator40CostPerHour: '', dehydrator100Hours: '', dehydrator100CostPerHour: '',
+        dryProductKg: '', bagWeightGrams: '', packagingCostPerBag: '', labelCostPerBag: '', bagLaborCost: '',
+        markupPercentage: '', extraCost: '', vatRate: '10', notes: ''
+      };
+
+      const [form, setForm] = useState(emptyForm);
+
+      // Load data
+      useEffect(() => {
+        loadData();
+        loadPrices();
+      }, []);
+
+      // PWA Install
+      useEffect(() => {
+        const handler = (e) => {
+          e.preventDefault();
+          setDeferredPrompt(e);
+          setShowInstall(true);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+      }, []);
+
+      const loadData = async () => {
+        try {
+          setLoading(true);
+          const data = await api.getAll();
+          setBatches(data);
+          setOnline(true);
+        } catch (e) {
+          setOnline(false);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadPrices = async () => {
+        try {
+          const res = await fetch(PRICES_API);
+          const data = await res.json();
+          if (data.success && data.products) {
+            const prices = {};
+            data.products.forEach(p => {
+              const name = p.name.replace(/&#\d+;/g, '').toLowerCase();
+              prices[name] = { price: p.price, weight: p.weight, url: p.url };
+            });
+            setSitePrices(prices);
+          }
+        } catch (e) {}
+      };
+
+      const findSitePrice = (name) => {
+        if (!name) return null;
+        const search = name.toLowerCase().replace(/disidratata?o?i?e?|biologica?o?|bio|senza zucchero/gi, '').trim();
+        for (const [key, val] of Object.entries(sitePrices)) {
+          const k = key.replace(/disidratata?o?i?e?|biologica?o?|senza zucchero/gi, '').trim();
+          if (k.includes(search) || search.includes(k.split(' ')[0])) return val;
+        }
+        return null;
+      };
+
+      const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      const handleInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        setShowInstall(false);
+        setDeferredPrompt(null);
+      };
+
+      const openCreate = () => {
+        setForm(emptyForm);
+        setModalMode('create');
+        setStep(1);
+        setShowModal(true);
+      };
+
+      const openEdit = (batch) => {
+        setForm({
+          ...emptyForm,
+          ...batch,
+          freshProductKg: batch.freshProductKg?.toString() || '',
+          rawMaterialCostPerKg: batch.rawMaterialCostPerKg?.toString() || '',
+          laborHours: batch.laborHours?.toString() || '',
+          laborCostPerHour: batch.laborCostPerHour?.toString() || '',
+          dehydrator40Hours: batch.dehydrator40Hours?.toString() || '',
+          dehydrator40CostPerHour: batch.dehydrator40CostPerHour?.toString() || '',
+          dehydrator100Hours: batch.dehydrator100Hours?.toString() || '',
+          dehydrator100CostPerHour: batch.dehydrator100CostPerHour?.toString() || '',
+          dryProductKg: batch.dryProductKg?.toString() || '',
+          bagWeightGrams: batch.bagWeightGrams?.toString() || '',
+          packagingCostPerBag: batch.packagingCostPerBag?.toString() || '',
+          labelCostPerBag: batch.labelCostPerBag?.toString() || '',
+          bagLaborCost: batch.bagLaborCost?.toString() || '',
+          markupPercentage: batch.markupPercentage?.toString() || '',
+          extraCost: batch.extraCost?.toString() || '',
+          vatRate: batch.vatRate?.toString() || '10',
+        });
+        setModalMode('edit');
+        setStep(1);
+        setSelectedBatch(null);
+        setShowModal(true);
+      };
+
+      const openDetail = (batch) => {
+        setSelectedBatch(batch);
+      };
+
+      const handleSave = async () => {
+        const lotNumber = generateLotNumber(new Date(form.processingDate));
+        const batch = {
+          id: modalMode === 'edit' ? form.id : Date.now().toString(),
+          lotNumber,
+          productType: form.productType,
+          productCategory: form.productCategory,
+          processingDate: form.processingDate,
+          freshProductKg: safeNum(form.freshProductKg),
+          rawMaterialCostPerKg: safeNum(form.rawMaterialCostPerKg),
+          laborHours: safeNum(form.laborHours),
+          laborCostPerHour: safeNum(form.laborCostPerHour),
+          dehydrator40Hours: safeNum(form.dehydrator40Hours),
+          dehydrator40CostPerHour: safeNum(form.dehydrator40CostPerHour),
+          dehydrator100Hours: safeNum(form.dehydrator100Hours),
+          dehydrator100CostPerHour: safeNum(form.dehydrator100CostPerHour),
+          dryProductKg: safeNum(form.dryProductKg),
+          bagWeightGrams: safeNum(form.bagWeightGrams),
+          packagingCostPerBag: safeNum(form.packagingCostPerBag),
+          labelCostPerBag: safeNum(form.labelCostPerBag),
+          bagLaborCost: safeNum(form.bagLaborCost),
+          markupPercentage: safeNum(form.markupPercentage),
+          extraCost: safeNum(form.extraCost),
+          vatRate: safeNum(form.vatRate),
+          notes: form.notes
+        };
+
+        try {
+          if (modalMode === 'edit') {
+            await api.update(batch);
+            showToast('✓ Lotto aggiornato');
+          } else {
+            await api.add(batch);
+            showToast('✓ Lotto creato');
+          }
+          await loadData();
+          setShowModal(false);
+        } catch (e) {
+          showToast('✕ Errore');
+        }
+      };
+
+      const handleDelete = async () => {
+        if (!confirm('Eliminare questo lotto?')) return;
+        try {
+          await api.delete(selectedBatch.id);
+          showToast('✓ Eliminato');
+          setSelectedBatch(null);
+          await loadData();
+        } catch (e) {
+          showToast('✕ Errore');
+        }
+      };
+
+      // Filtered batches
+      const filtered = batches
+        .filter(b => {
+          if (filter === 'all') return true;
+          if (filter === 'incomplete') return !getCalc(b).isComplete;
+          if (filter === 'expiring') return isExpiringSoon(b.processingDate);
+          return b.productCategory === filter;
+        })
+        .sort((a, b) => new Date(b.processingDate) - new Date(a.processingDate));
+
+      // Stats
+      const stats = batches.reduce((acc, b) => {
+        const c = getCalc(b);
+        return {
+          total: acc.total + 1,
+          dryKg: acc.dryKg + safeNum(b.dryProductKg),
+          bags: acc.bags + c.numBags
+        };
+      }, { total: 0, dryKg: 0, bags: 0 });
+
+      const liveCalc = getCalc(form);
+
+      return (
+        <>
+          {/* Header */}
+          <header className="header">
+            <div className="header-content">
+              <div className="logo">
+                <div className="logo-icon">🍂</div>
+                <div>
+                  <h1>Malbosca</h1>
+                  <p>Gestione Lotti</p>
+                </div>
+              </div>
+              <button className="header-btn" style={{position:'relative'}}>
+                <Icons.Search />
+                <div className={`status-dot ${online ? '' : 'offline'}`}></div>
+              </button>
+            </div>
+          </header>
+
+          {/* Stats Bar */}
+          <div className="stats-bar">
+            <div className="stat-item">
+              <div className="value">{stats.total}</div>
+              <div className="label">Lotti</div>
+            </div>
+            <div className="stat-item">
+              <div className="value">{stats.dryKg.toFixed(1)}</div>
+              <div className="label">Kg Secco</div>
+            </div>
+            <div className="stat-item">
+              <div className="value">{stats.bags}</div>
+              <div className="label">Sacchetti</div>
+            </div>
+          </div>
+
+          {/* Main */}
+          <main className="main">
+            {/* Filter Tabs */}
+            <div className="tabs">
+              <button className={`tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>Tutti</button>
+              <button className={`tab ${filter === 'frutta' ? 'active' : ''}`} onClick={() => setFilter('frutta')}>🍎 Frutta</button>
+              <button className={`tab ${filter === 'verdura' ? 'active' : ''}`} onClick={() => setFilter('verdura')}>🥬 Verdura</button>
+              <button className={`tab ${filter === 'incomplete' ? 'active' : ''}`} onClick={() => setFilter('incomplete')}>⏳ Incompleti</button>
+              <button className={`tab ${filter === 'expiring' ? 'active' : ''}`} onClick={() => setFilter('expiring')}>⚠️ Scadenza</button>
+            </div>
+
+            {/* List Header */}
+            <div className="section-header">
+              <h2 className="section-title">Lotti</h2>
+              <span className="section-count">{filtered.length} risultati</span>
+            </div>
+
+            {/* Batch List */}
+            {loading ? (
+              <div className="loading"><div className="spinner"></div></div>
+            ) : filtered.length === 0 ? (
+              <div className="empty-state">
+                <div className="icon">📦</div>
+                <h3>Nessun lotto</h3>
+                <p>Crea il tuo primo lotto di produzione</p>
+                <button className="btn btn-primary" style={{maxWidth: 200, margin: '0 auto'}} onClick={openCreate}>
+                  <Icons.Plus /> Nuovo Lotto
+                </button>
+              </div>
+            ) : (
+              <div className="batch-list">
+                {filtered.map(batch => {
+                  const c = getCalc(batch);
+                  const expired = isExpired(batch.processingDate);
+                  const expiring = isExpiringSoon(batch.processingDate);
+                  
+                  return (
+                    <div key={batch.id} className="batch-card" onClick={() => openDetail(batch)}>
+                      <div className="batch-top">
+                        <div className={`batch-emoji ${batch.productCategory}`}>
+                          {categoryEmoji[batch.productCategory] || '📦'}
+                        </div>
+                        <div className="batch-info">
+                          <div className="batch-header">
+                            <span className="batch-lot">Lotto {batch.lotNumber}</span>
+                            {expired ? (
+                              <span className="batch-status expired">Scaduto</span>
+                            ) : expiring ? (
+                              <span className="batch-status expired">In scadenza</span>
+                            ) : c.isComplete ? (
+                              <span className="batch-status complete">Completo</span>
+                            ) : (
+                              <span className="batch-status incomplete">Incompleto</span>
+                            )}
+                          </div>
+                          <div className="batch-name">{batch.productType || 'Senza nome'}</div>
+                          <div className="batch-date">📅 {formatDate(batch.processingDate)} • Scad. {formatExpiry(batch.processingDate)}</div>
+                        </div>
+                      </div>
+                      <div className="batch-stats">
+                        <div className="batch-stat">
+                          <div className="value">{batch.freshProductKg || '—'}</div>
+                          <div className="label">Kg Fresco</div>
+                        </div>
+                        <div className="batch-stat">
+                          <div className="value">{batch.dryProductKg || '—'}</div>
+                          <div className="label">Kg Secco</div>
+                        </div>
+                        <div className="batch-stat">
+                          <div className="value">{c.yieldPct > 0 ? `${c.yieldPct.toFixed(0)}%` : '—'}</div>
+                          <div className="label">Resa</div>
+                        </div>
+                        <div className="batch-stat">
+                          <div className={`value ${c.pricePerBagVat > 0 ? 'highlight' : ''}`}>
+                            {c.pricePerBagVat > 0 ? `€${c.pricePerBagVat.toFixed(2)}` : '—'}
+                          </div>
+                          <div className="label">Prezzo</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+
+          {/* FAB */}
+          <button className="fab" onClick={openCreate}>
+            <Icons.Plus />
+          </button>
+
+          {/* Bottom Nav */}
+          <nav className="bottom-nav">
+            <button className={`nav-item ${view === 'home' ? 'active' : ''}`} onClick={() => setView('home')}>
+              <Icons.Home />
+              Home
+            </button>
+            <button className={`nav-item ${view === 'lots' ? 'active' : ''}`} onClick={() => setView('lots')}>
+              <Icons.Box />
+              Lotti
+            </button>
+            <button className={`nav-item ${view === 'stats' ? 'active' : ''}`} onClick={() => setView('stats')}>
+              <Icons.Chart />
+              Stats
+            </button>
+            <button className="nav-item">
+              <Icons.Menu />
+              Menu
+            </button>
+          </nav>
+
+          {/* Detail Modal */}
+          {selectedBatch && (
+            <div className="modal-overlay show" onClick={(e) => e.target === e.currentTarget && setSelectedBatch(null)}>
+              <div className="modal">
+                <div className="modal-handle"></div>
+                <div className="modal-header">
+                  <h2>{selectedBatch.productType}</h2>
+                  <p className="modal-subtitle">Lotto {selectedBatch.lotNumber} • {formatDate(selectedBatch.processingDate)}</p>
+                </div>
+                <div className="modal-body">
+                  {(() => {
+                    const c = getCalc(selectedBatch);
+                    const sitePrice = findSitePrice(selectedBatch.productType);
+                    
+                    return (
+                      <>
+                        <div className="detail-section">
+                          <div className="detail-section-title">Produzione</div>
+                          <div className="detail-grid">
+                            <div className="detail-box">
+                              <div className="label">Prodotto Fresco</div>
+                              <div className="value">{selectedBatch.freshProductKg || '—'} kg</div>
+                            </div>
+                            <div className="detail-box">
+                              <div className="label">Prodotto Secco</div>
+                              <div className="value">{selectedBatch.dryProductKg || '—'} kg</div>
+                            </div>
+                            <div className="detail-box">
+                              <div className="label">Resa</div>
+                              <div className="value">{c.yieldPct > 0 ? `${c.yieldPct.toFixed(1)}%` : '—'}</div>
+                            </div>
+                            <div className="detail-box">
+                              <div className="label">Scadenza</div>
+                              <div className="value">{formatExpiry(selectedBatch.processingDate)}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="detail-section">
+                          <div className="detail-section-title">Costi</div>
+                          <div className="detail-grid">
+                            <div className="detail-box">
+                              <div className="label">Materia Prima</div>
+                              <div className="value">€{c.rawCost.toFixed(2)}</div>
+                            </div>
+                            <div className="detail-box">
+                              <div className="label">Manodopera</div>
+                              <div className="value">€{c.laborCost.toFixed(2)}</div>
+                            </div>
+                            <div className="detail-box">
+                              <div className="label">Disidratatori</div>
+                              <div className="value">€{c.dehyTotal.toFixed(2)}</div>
+                            </div>
+                            <div className="detail-box">
+                              <div className="label">Extra</div>
+                              <div className="value">€{c.extra.toFixed(2)}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {c.numBags > 0 && (
+                          <div className="detail-section">
+                            <div className="detail-section-title">Confezionamento ({c.numBags} sacchetti da {selectedBatch.bagWeightGrams}g)</div>
+                            <div className="detail-grid">
+                              <div className="detail-box">
+                                <div className="label">Costo/Sacchetto</div>
+                                <div className="value">€{c.costPerBag.toFixed(2)}</div>
+                              </div>
+                              <div className="detail-box highlight">
+                                <div className="label">Prezzo con IVA</div>
+                                <div className="value">€{c.pricePerBagVat.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {sitePrice && (
+                          <div className="site-comparison">
+                            <h4>🌐 Confronto con Sito</h4>
+                            <div className="comparison-row">
+                              <span className="label">Prezzo sito ({sitePrice.weight}g)</span>
+                              <span className="value">€{sitePrice.price.toFixed(2)}</span>
+                            </div>
+                            <div className="comparison-row">
+                              <span className="label">Tuo prezzo ({selectedBatch.bagWeightGrams}g)</span>
+                              <span className="value">€{c.pricePerBagVat.toFixed(2)}</span>
+                            </div>
+                            <div className="comparison-row">
+                              <span className="label">Stato</span>
+                              <span className={`value ${c.pricePerBagVat <= sitePrice.price ? 'success' : 'danger'}`}>
+                                {c.pricePerBagVat <= sitePrice.price ? '✓ OK' : '⚠ Alto'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedBatch.notes && (
+                          <div className="detail-section">
+                            <div className="detail-section-title">Note</div>
+                            <p style={{fontSize: 14, color: 'var(--gray-600)'}}>{selectedBatch.notes}</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-danger" onClick={handleDelete}>
+                    <Icons.Trash /> Elimina
+                  </button>
+                  <button className="btn btn-primary" onClick={() => openEdit(selectedBatch)}>
+                    <Icons.Edit /> Modifica
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Create/Edit Modal */}
+          {showModal && (
+            <div className="modal-overlay show" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+              <div className="modal">
+                <div className="modal-handle"></div>
+                <div className="modal-header">
+                  <h2>{modalMode === 'edit' ? 'Modifica Lotto' : 'Nuovo Lotto'}</h2>
+                  {form.processingDate && (
+                    <p className="modal-subtitle">Lotto {generateLotNumber(new Date(form.processingDate))} • Scad. {formatExpiry(form.processingDate)}</p>
+                  )}
+                </div>
+                <div className="modal-body">
+                  {/* Wizard Nav */}
+                  <div className="wizard-nav">
+                    <div className={`wizard-dot ${step >= 1 ? 'active' : ''} ${step > 1 ? 'done' : ''}`}></div>
+                    <div className={`wizard-dot ${step >= 2 ? 'active' : ''} ${step > 2 ? 'done' : ''}`}></div>
+                    <div className={`wizard-dot ${step >= 3 ? 'active' : ''} ${step > 3 ? 'done' : ''}`}></div>
+                    <div className={`wizard-dot ${step >= 4 ? 'active' : ''}`}></div>
+                  </div>
+
+                  {/* Step 1: Base Info */}
+                  {step === 1 && (
+                    <>
+                      <div className="step-title"><span className="emoji">📋</span> Info Prodotto</div>
+                      <div className="form-group">
+                        <label className="form-label">Nome Prodotto *</label>
+                        <input type="text" className="form-input" placeholder="es. Mele Disidratate Bio" value={form.productType} onChange={e => setForm({...form, productType: e.target.value})} />
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Categoria</label>
+                          <select className="form-input" value={form.productCategory} onChange={e => setForm({...form, productCategory: e.target.value})}>
+                            <option value="frutta">🍎 Frutta</option>
+                            <option value="verdura">🥬 Verdura</option>
+                            <option value="erbe">🌿 Erbe</option>
+                            <option value="funghi">🍄 Funghi</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Data Produzione</label>
+                          <input type="date" className="form-input" value={form.processingDate} onChange={e => setForm({...form, processingDate: e.target.value})} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Step 2: Production */}
+                  {step === 2 && (
+                    <>
+                      <div className="step-title"><span className="emoji">🥬</span> Materia Prima & Lavoro</div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Kg Fresco</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.freshProductKg} onChange={e => setForm({...form, freshProductKg: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">€/kg Materia Prima</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.rawMaterialCostPerKg} onChange={e => setForm({...form, rawMaterialCostPerKg: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Ore Manodopera</label>
+                          <input type="number" step="0.25" className="form-input" placeholder="0.00" value={form.laborHours} onChange={e => setForm({...form, laborHours: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">€/ora</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.laborCostPerHour} onChange={e => setForm({...form, laborCostPerHour: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="step-title" style={{marginTop: 20}}><span className="emoji">🔥</span> Disidratatori</div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Mod.40 Ore</label>
+                          <input type="number" step="0.5" className="form-input" placeholder="0" value={form.dehydrator40Hours} onChange={e => setForm({...form, dehydrator40Hours: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Mod.40 €/h</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.dehydrator40CostPerHour} onChange={e => setForm({...form, dehydrator40CostPerHour: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Mod.100 Ore</label>
+                          <input type="number" step="0.5" className="form-input" placeholder="0" value={form.dehydrator100Hours} onChange={e => setForm({...form, dehydrator100Hours: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Mod.100 €/h</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.dehydrator100CostPerHour} onChange={e => setForm({...form, dehydrator100CostPerHour: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Costi Extra (trasporto, altro)</label>
+                        <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.extraCost} onChange={e => setForm({...form, extraCost: e.target.value})} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Step 3: Output */}
+                  {step === 3 && (
+                    <>
+                      <div className="step-title"><span className="emoji">📦</span> Prodotto Finito</div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Kg Secco Ottenuto</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.dryProductKg} onChange={e => setForm({...form, dryProductKg: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">IVA %</label>
+                          <select className="form-input" value={form.vatRate} onChange={e => setForm({...form, vatRate: e.target.value})}>
+                            <option value="4">4%</option>
+                            <option value="10">10%</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Margine %</label>
+                        <input type="number" step="1" className="form-input" placeholder="30" value={form.markupPercentage} onChange={e => setForm({...form, markupPercentage: e.target.value})} />
+                      </div>
+
+                      {liveCalc.yieldPct > 0 && (
+                        <div className="live-preview">
+                          <h4>📊 Anteprima</h4>
+                          <div className="preview-grid">
+                            <div className="preview-item">
+                              <div className="value">{liveCalc.yieldPct.toFixed(1)}%</div>
+                              <div className="label">Resa</div>
+                            </div>
+                            <div className="preview-item">
+                              <div className="value">€{liveCalc.costPerKg.toFixed(2)}</div>
+                              <div className="label">Costo/kg</div>
+                            </div>
+                            <div className="preview-item">
+                              <div className="value success">€{liveCalc.pricePerKgVat.toFixed(2)}</div>
+                              <div className="label">Prezzo/kg</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Step 4: Packaging */}
+                  {step === 4 && (
+                    <>
+                      <div className="step-title"><span className="emoji">🛍️</span> Confezionamento</div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Peso Sacchetto (g)</label>
+                          <input type="number" step="1" className="form-input" placeholder="30" value={form.bagWeightGrams} onChange={e => setForm({...form, bagWeightGrams: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">€ Imballaggio</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.packagingCostPerBag} onChange={e => setForm({...form, packagingCostPerBag: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">€ Etichetta</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.labelCostPerBag} onChange={e => setForm({...form, labelCostPerBag: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">€ Manodopera/sacch.</label>
+                          <input type="number" step="0.01" className="form-input" placeholder="0.00" value={form.bagLaborCost} onChange={e => setForm({...form, bagLaborCost: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Note</label>
+                        <textarea className="form-input" rows="2" placeholder="Note opzionali..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
+                      </div>
+
+                      {liveCalc.numBags > 0 && (
+                        <div className="live-preview">
+                          <h4>📊 Riepilogo Finale</h4>
+                          <div className="preview-grid">
+                            <div className="preview-item">
+                              <div className="value">{liveCalc.numBags}</div>
+                              <div className="label">Sacchetti</div>
+                            </div>
+                            <div className="preview-item">
+                              <div className="value">€{liveCalc.costPerBag.toFixed(2)}</div>
+                              <div className="label">Costo</div>
+                            </div>
+                            <div className="preview-item">
+                              <div className="value success">€{liveCalc.pricePerBagVat.toFixed(2)}</div>
+                              <div className="label">Prezzo</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  {step > 1 ? (
+                    <button className="btn btn-secondary" onClick={() => setStep(step - 1)}>← Indietro</button>
+                  ) : (
+                    <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Annulla</button>
+                  )}
+                  {step < 4 ? (
+                    <button className="btn btn-primary" onClick={() => setStep(step + 1)} disabled={step === 1 && !form.productType}>
+                      Avanti →
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={handleSave}>
+                      ✓ Salva
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Install Banner */}
+          {showInstall && (
+            <div className="install-banner show">
+              <div className="icon">📱</div>
+              <div className="content">
+                <h4>Installa l'App</h4>
+                <p>Accesso rapido dalla home</p>
+              </div>
+              <div className="actions">
+                <button className="skip" onClick={() => setShowInstall(false)}>Dopo</button>
+                <button className="install" onClick={handleInstall}>Installa</button>
+              </div>
+            </div>
+          )}
+
+          {/* Toast */}
+          {toast && <div className="toast show">{toast}</div>}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
