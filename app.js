@@ -992,6 +992,10 @@ function App() {
         setShowReport(false);
         setShowPulizie(false);
         setShowLotti(false);
+        setShowInventarioForm(false);
+        setShowStoricoInventari(false);
+        // Scroll in cima alla pagina
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const aggiornaProdottoCompletamento = (index, campo, valore) => {
