@@ -148,6 +148,17 @@ const API = {
         }
     },
 
+    async caricaLotti() {
+        try {
+            const response = await fetch(`${API_URL}/lotti`);
+            if (!response.ok) throw new Error('Errore caricamento lotti');
+            return await response.json();
+        } catch (error) {
+            console.error('Errore API:', error);
+            return [];
+        }
+    },
+
     async caricaPulizie() {
         try {
             const response = await fetch(`${API_URL}/pulizie`);
@@ -194,6 +205,7 @@ const API = {
 
 function App() {
     const [lavorazioni, setLavorazioni] = useState([]);
+    const [lotti, setLotti] = useState([]);
     const [currentLavorazione, setCurrentLavorazione] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -295,6 +307,8 @@ function App() {
         setLoading(true);
         const lav = await API.caricaLavorazioni();
         setLavorazioni(lav);
+        const lot = await API.caricaLotti();
+        setLotti(lot);
         setLoading(false);
     };
 
@@ -1979,6 +1993,33 @@ function App() {
                                                         📊 ${totaleKgFreschi > 0 ? ((totaleKgSecchi / totaleKgFreschi) * 100).toFixed(1) : 0}% resa
                                                     </span>
                                                 </div>
+                                                
+                                                <!-- Lotti associati -->
+                                                ${(() => {
+                                                    const lottiAssociati = lotti.filter(l => l.idLavorazione === lav.id);
+                                                    if (lottiAssociati.length === 0) return null;
+                                                    return html`
+                                                        <div class="mt-2 pt-2 border-t border-green-200">
+                                                            <div class="text-xs text-gray-500 mb-1">📦 Lotti:</div>
+                                                            <div class="space-y-1">
+                                                                ${lottiAssociati.map(lotto => html`
+                                                                    <div class="bg-white px-2 py-1 rounded text-xs border border-green-200">
+                                                                        <div class="flex justify-between items-center">
+                                                                            <span class="font-medium text-green-700">${lotto.lotNumber}</span>
+                                                                            <span class="text-gray-600">${lotto.productType}</span>
+                                                                        </div>
+                                                                        ${lotto.costPerKgDry > 0 && html`
+                                                                            <div class="flex justify-between text-gray-500 mt-1">
+                                                                                <span>Costo: €${lotto.costPerKgDry?.toFixed(2)}/kg</span>
+                                                                                <span class="text-green-600 font-medium">→ €${lotto.pricePerKgVat?.toFixed(2)}/kg</span>
+                                                                            </div>
+                                                                        `}
+                                                                    </div>
+                                                                `)}
+                                                            </div>
+                                                        </div>
+                                                    `;
+                                                })()}
                                             `}
                                         </div>
                                         
