@@ -211,6 +211,45 @@ const API = {
             console.error('Errore aggiornamento lotto:', error);
             return { success: false, error: error.message };
         }
+    },
+
+    async caricaInventari() {
+        try {
+            const response = await fetch(`${API_URL}/inventari`);
+            if (!response.ok) throw new Error('Errore caricamento inventari');
+            return await response.json();
+        } catch (error) {
+            console.error('Errore API:', error);
+            return [];
+        }
+    },
+
+    async salvaInventario(inventario) {
+        try {
+            const response = await fetch(`${API_URL}/inventari`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(inventario)
+            });
+            if (!response.ok) throw new Error('Errore salvataggio inventario');
+            return await response.json();
+        } catch (error) {
+            console.error('Errore salvataggio inventario:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    async eliminaInventario(id) {
+        try {
+            const response = await fetch(`${API_URL}/inventari/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Errore eliminazione inventario');
+            return true;
+        } catch (error) {
+            console.error('Errore eliminazione inventario:', error);
+            return false;
+        }
     }
 };
 
@@ -232,6 +271,13 @@ function App() {
     const [showLotti, setShowLotti] = useState(false);
     const [filtroLotti, setFiltroLotti] = useState('tutti');
     const [pulizie, setPulizie] = useState([]);
+    const [inventari, setInventari] = useState([]);
+    const [showInventarioForm, setShowInventarioForm] = useState(false);
+    const [showStoricoInventari, setShowStoricoInventari] = useState(false);
+    const [inventarioForm, setInventarioForm] = useState({
+        note: '',
+        righe: []
+    });
     
     // Parametri costi (valori di default salvati in localStorage)
     const [parametriCosti, setParametriCosti] = useState(() => {
@@ -326,6 +372,8 @@ function App() {
         setLavorazioni(lav);
         const lot = await API.caricaLotti();
         setLotti(lot);
+        const inv = await API.caricaInventari();
+        setInventari(inv);
         setLoading(false);
     };
 
@@ -338,6 +386,65 @@ function App() {
         const risultato = await API.aggiornaLotto(idLotto, { esaurito: esaurito ? 1 : 0 });
         if (risultato.success) {
             setLotti(lotti.map(l => l.id === idLotto ? { ...l, esaurito: esaurito } : l));
+        }
+    };
+
+    const apriFormInventario = () => {
+        // Inizializza form con tutti i lotti disponibili
+        const lottiDisponibili = lotti.filter(l => !l.esaurito);
+        setInventarioForm({
+            note: '',
+            righe: lottiDisponibili.map(l => ({
+                idLotto: l.id,
+                lotNumber: l.lotNumber,
+                productType: l.productType,
+                kgRilevati: ''
+            }))
+        });
+        setShowInventarioForm(true);
+    };
+
+    const aggiornaRigaInventario = (index, kg) => {
+        const nuoveRighe = [...inventarioForm.righe];
+        nuoveRighe[index] = { ...nuoveRighe[index], kgRilevati: kg };
+        setInventarioForm({ ...inventarioForm, righe: nuoveRighe });
+    };
+
+    const salvaInventario = async () => {
+        // Filtra solo righe con kg inseriti
+        const righeValide = inventarioForm.righe.filter(r => r.kgRilevati !== '' && r.kgRilevati !== null);
+        
+        if (righeValide.length === 0) {
+            alert('Inserisci almeno un valore');
+            return;
+        }
+
+        const inventario = {
+            id: 'INV_' + Date.now(),
+            data: new Date().toISOString(),
+            note: inventarioForm.note,
+            righe: righeValide.map(r => ({
+                idLotto: r.idLotto,
+                lotNumber: r.lotNumber,
+                productType: r.productType,
+                kgRilevati: parseFloat(r.kgRilevati)
+            }))
+        };
+
+        const result = await API.salvaInventario(inventario);
+        if (result.success) {
+            setShowInventarioForm(false);
+            await caricaDati();
+        } else {
+            alert('Errore salvataggio inventario');
+        }
+    };
+
+    const eliminaInventario = async (id) => {
+        if (!confirm('Eliminare questo inventario?')) return;
+        const success = await API.eliminaInventario(id);
+        if (success) {
+            await caricaDati();
         }
     };
 
@@ -1262,6 +1369,22 @@ function App() {
                                 <div class="text-xs text-red-600">Esauriti</div>
                             </div>
                         </div>
+
+                        <!-- Pulsanti Inventario -->
+                        <div class="flex gap-2 mb-4">
+                            <button
+                                onClick=${apriFormInventario}
+                                class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                                📋 Registra Inventario
+                            </button>
+                            <button
+                                onClick=${() => setShowStoricoInventari(!showStoricoInventari)}
+                                class="${`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${showStoricoInventari ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}"
+                            >
+                                📜 Storico (${inventari.length})
+                            </button>
+                        </div>
                         
                         <!-- Filtri -->
                         <div class="flex gap-2 mb-4">
@@ -1346,6 +1469,108 @@ function App() {
                                     `}
                                 </div>
                             `)}
+                        </div>
+
+                        <!-- Storico Inventari -->
+                        ${showStoricoInventari && html`
+                            <div class="mt-4 border-t pt-4">
+                                <h3 class="text-md font-bold text-indigo-800 mb-3">📜 Storico Inventari</h3>
+                                ${inventari.length === 0 ? html`
+                                    <p class="text-gray-500 text-center py-4">Nessun inventario registrato</p>
+                                ` : inventari.map(inv => html`
+                                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-2">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div class="font-bold text-indigo-800">
+                                                    📅 ${new Date(inv.data).toLocaleDateString('it-IT')} - ${new Date(inv.data).toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
+                                                </div>
+                                                ${inv.note && html`<div class="text-xs text-gray-600 mt-1">📝 ${inv.note}</div>`}
+                                            </div>
+                                            <button
+                                                onClick=${() => eliminaInventario(inv.id)}
+                                                class="text-red-500 hover:text-red-700 text-sm"
+                                            >🗑️</button>
+                                        </div>
+                                        <div class="space-y-1">
+                                            ${inv.righe.map(r => html`
+                                                <div class="flex justify-between text-xs bg-white rounded px-2 py-1">
+                                                    <span class="text-gray-700">${r.lotNumber} - ${r.productType}</span>
+                                                    <span class="font-medium text-indigo-700">${r.kgRilevati.toFixed(2)} kg</span>
+                                                </div>
+                                            `)}
+                                        </div>
+                                        <div class="text-right mt-2 text-sm font-bold text-indigo-800">
+                                            Totale: ${inv.righe.reduce((sum, r) => sum + r.kgRilevati, 0).toFixed(2)} kg
+                                        </div>
+                                    </div>
+                                `)}
+                            </div>
+                        `}
+                    </div>
+                `}
+
+                <!-- Form Inventario -->
+                ${showInventarioForm && html`
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                            <div class="p-4 border-b bg-indigo-600 text-white rounded-t-xl">
+                                <h3 class="text-lg font-bold">📋 Registra Inventario</h3>
+                                <p class="text-xs text-indigo-200">${new Date().toLocaleDateString('it-IT')} - ${new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</p>
+                            </div>
+                            
+                            <div class="p-4">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Note (opzionale)</label>
+                                    <input
+                                        type="text"
+                                        value=${inventarioForm.note}
+                                        onInput=${(e) => setInventarioForm({...inventarioForm, note: e.target.value})}
+                                        placeholder="Es: Inventario mensile"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    />
+                                </div>
+                                
+                                <div class="text-sm font-medium text-gray-700 mb-2">Lotti disponibili (${inventarioForm.righe.length})</div>
+                                
+                                ${inventarioForm.righe.length === 0 ? html`
+                                    <p class="text-gray-500 text-center py-4">Nessun lotto disponibile</p>
+                                ` : html`
+                                    <div class="space-y-2 max-h-60 overflow-y-auto">
+                                        ${inventarioForm.righe.map((r, index) => html`
+                                            <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-medium text-gray-800">${r.lotNumber}</div>
+                                                    <div class="text-xs text-gray-500">${r.productType}</div>
+                                                </div>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="kg"
+                                                    value=${r.kgRilevati}
+                                                    onInput=${(e) => aggiornaRigaInventario(index, e.target.value)}
+                                                    class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                                                />
+                                                <span class="text-xs text-gray-500">kg</span>
+                                            </div>
+                                        `)}
+                                    </div>
+                                `}
+                            </div>
+                            
+                            <div class="p-4 border-t bg-gray-50 rounded-b-xl flex gap-2">
+                                <button
+                                    onClick=${() => setShowInventarioForm(false)}
+                                    class="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    onClick=${salvaInventario}
+                                    class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+                                >
+                                    💾 Salva
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `}
