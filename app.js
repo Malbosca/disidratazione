@@ -334,21 +334,11 @@ function App() {
         setPulizie(p);
     };
 
-    const aggiornaQuantitaLotto = async (idLotto, quantita) => {
-        const risultato = await API.aggiornaLotto(idLotto, { quantitaDisponibile: quantita });
-        if (risultato.success) {
-            // Aggiorna lo stato locale
-            setLotti(lotti.map(l => l.id === idLotto ? { ...l, quantitaDisponibile: quantita } : l));
-        }
-    };
-
     const toggleEsauritoLotto = async (idLotto, esaurito) => {
         const risultato = await API.aggiornaLotto(idLotto, { esaurito: esaurito ? 1 : 0 });
         if (risultato.success) {
-            // Aggiorna lo stato locale
             setLotti(lotti.map(l => l.id === idLotto ? { ...l, esaurito: esaurito } : l));
         }
-        await caricaDati(); // Ricarica per sincronizzare
     };
 
     const salvaPulizia = async () => {
@@ -1255,7 +1245,7 @@ function App() {
                 <!-- Sezione Lotti -->
                 ${showLotti && html`
                     <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
-                        <h2 class="text-lg font-bold text-teal-800 mb-4">📦 Inventario Lotti</h2>
+                        <h2 class="text-lg font-bold text-teal-800 mb-4">📦 Lotti</h2>
                         
                         <!-- Statistiche lotti -->
                         <div class="grid grid-cols-3 gap-2 mb-4">
@@ -1313,9 +1303,12 @@ function App() {
                                             <div class="font-bold text-gray-800">${lotto.lotNumber}</div>
                                             <div class="text-sm text-gray-600">${lotto.productType}</div>
                                         </div>
-                                        <span class="${`px-2 py-1 rounded-full text-xs font-medium ${lotto.esaurito ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}">
+                                        <button
+                                            onClick=${() => toggleEsauritoLotto(lotto.id, !lotto.esaurito)}
+                                            class="${`px-2 py-1 rounded-full text-xs font-medium ${lotto.esaurito ? 'bg-red-500 hover:bg-green-500 text-white' : 'bg-green-500 hover:bg-red-500 text-white'}`}"
+                                        >
                                             ${lotto.esaurito ? '❌ Esaurito' : '✅ Disponibile'}
-                                        </span>
+                                        </button>
                                     </div>
                                     
                                     <div class="grid grid-cols-2 gap-2 text-xs mb-2">
@@ -1326,15 +1319,15 @@ function App() {
                                             🏪 ${lotto.fornitore || '-'}
                                         </div>
                                         <div class="text-gray-600">
-                                            📦 ${lotto.dryProductKg?.toFixed(2) || 0} kg prodotti
+                                            📦 ${lotto.dryProductKg?.toFixed(2) || 0} kg
                                         </div>
                                         <div class="text-gray-600">
-                                            📊 Disp: ${lotto.quantitaDisponibile?.toFixed(2) || lotto.dryProductKg?.toFixed(2) || 0} kg
+                                            🏷️ ${lotto.productCategory || '-'}
                                         </div>
                                     </div>
                                     
                                     ${lotto.costPerKgDry > 0 && html`
-                                        <div class="bg-white rounded p-2 mb-2 text-xs">
+                                        <div class="bg-white rounded p-2 text-xs">
                                             <div class="grid grid-cols-3 gap-1">
                                                 <div>
                                                     <span class="text-gray-500">Costo:</span>
@@ -1351,24 +1344,6 @@ function App() {
                                             </div>
                                         </div>
                                     `}
-                                    
-                                    <!-- Modifica quantità e stato -->
-                                    <div class="flex gap-2 items-center">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            placeholder="Kg disponibili"
-                                            value=${lotto.quantitaDisponibile ?? lotto.dryProductKg ?? ''}
-                                            onInput=${(e) => aggiornaQuantitaLotto(lotto.id, parseFloat(e.target.value))}
-                                            class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
-                                        />
-                                        <button
-                                            onClick=${() => toggleEsauritoLotto(lotto.id, !lotto.esaurito)}
-                                            class="${`px-3 py-1 rounded text-xs font-medium ${lotto.esaurito ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}"
-                                        >
-                                            ${lotto.esaurito ? '🔄 Riattiva' : '❌ Esaurito'}
-                                        </button>
-                                    </div>
                                 </div>
                             `)}
                         </div>
