@@ -784,6 +784,11 @@ function App() {
             kgSecco: p.kgSecco || '',
             categoria: p.categoria || 'verdura'
         })));
+        // Nascondi dashboard e altri pannelli
+        setShowDashboard(false);
+        setShowForm(false);
+        setShowReport(false);
+        setShowPulizie(false);
     };
 
     const aggiornaProdottoCompletamento = (index, campo, valore) => {
