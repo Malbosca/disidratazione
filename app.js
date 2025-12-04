@@ -203,6 +203,25 @@ function App() {
     const [creatingLotto, setCreatingLotto] = useState(false);
     const [showPulizie, setShowPulizie] = useState(false);
     const [pulizie, setPulizie] = useState([]);
+    
+    // Parametri costi (valori di default salvati in localStorage)
+    const [parametriCosti, setParametriCosti] = useState(() => {
+        const saved = localStorage.getItem('parametriCosti');
+        return saved ? JSON.parse(saved) : {
+            costoOraManodopera: 12,
+            costoOraDisidratatore40: 0.80,
+            costoOraDisidratatore100: 1.50,
+            marginePercentuale: 30,
+            aliquotaIVA: 10,
+            costiExtra: 0
+        };
+    });
+    
+    // Salva parametri costi in localStorage quando cambiano
+    useEffect(() => {
+        localStorage.setItem('parametriCosti', JSON.stringify(parametriCosti));
+    }, [parametriCosti]);
+    
     const [puliziaForm, setPuliziaForm] = useState({
         data: new Date().toISOString().split('T')[0],
         locale: 'Laboratorio',
@@ -726,7 +745,24 @@ function App() {
         
         for (const prod of prodottiCompletamento) {
             const kgFreschiProdotto = parseFloat(prod.kgAcquistati) || 0;
+            const kgSeccoProdotto = parseFloat(prod.kgSecco) || 0;
             const proporzione = totaleKgFreschi > 0 ? kgFreschiProdotto / totaleKgFreschi : 0;
+            
+            // Calcola costi proporzionali per questo prodotto
+            const oreManodoperaProd = oreManooperaTotali * proporzione;
+            const oreDisid40Prod = oreDisidratatore40 * proporzione;
+            const oreDisid100Prod = oreDisidratatore100 * proporzione;
+            const costiExtraProd = parametriCosti.costiExtra * proporzione;
+            
+            const costoManodoperaProd = oreManodoperaProd * parametriCosti.costoOraManodopera;
+            const costoDisid40Prod = oreDisid40Prod * parametriCosti.costoOraDisidratatore40;
+            const costoDisid100Prod = oreDisid100Prod * parametriCosti.costoOraDisidratatore100;
+            const costoEnergiaProd = costoDisid40Prod + costoDisid100Prod;
+            const costoProduzioneProd = costoManodoperaProd + costoEnergiaProd + costiExtraProd;
+            
+            const costoAlKg = kgSeccoProdotto > 0 ? costoProduzioneProd / kgSeccoProdotto : 0;
+            const prezzoConMargine = costoAlKg * (1 + parametriCosti.marginePercentuale / 100);
+            const prezzoConIVA = prezzoConMargine * (1 + parametriCosti.aliquotaIVA / 100);
             
             const datiLotto = {
                 prodotto: prod.prodotto,
@@ -734,10 +770,25 @@ function App() {
                 dataInizio: currentLavorazione.dataInizio,
                 kgFreschi: prod.kgAcquistati,
                 kgSecco: prod.kgSecco,
-                oreManodopera: oreManooperaTotali * proporzione,
-                oreDisidratatore40: oreDisidratatore40 * proporzione,
-                oreDisidratatore100: oreDisidratatore100 * proporzione,
-                categoria: prod.categoria
+                oreManodopera: oreManodoperaProd,
+                oreDisidratatore40: oreDisid40Prod,
+                oreDisidratatore100: oreDisid100Prod,
+                categoria: prod.categoria,
+                idLavorazione: currentLavorazione.id,
+                // Parametri costo
+                costoOraManodopera: parametriCosti.costoOraManodopera,
+                costoOraDisidratatore40: parametriCosti.costoOraDisidratatore40,
+                costoOraDisidratatore100: parametriCosti.costoOraDisidratatore100,
+                marginePercentuale: parametriCosti.marginePercentuale,
+                aliquotaIVA: parametriCosti.aliquotaIVA,
+                costiExtra: costiExtraProd,
+                // Costi calcolati
+                costoManodopera: costoManodoperaProd,
+                costoEnergia: costoEnergiaProd,
+                costoProduzione: costoProduzioneProd,
+                costoAlKg: costoAlKg,
+                prezzoAlKg: prezzoConMargine,
+                prezzoAlKgIVA: prezzoConIVA
             };
 
             const risultatoLotto = await API.creaLotto(datiLotto);
@@ -1519,6 +1570,137 @@ function App() {
                                             </div>
                                         </div>
                                     `)}
+                                </div>
+                                
+                                <!-- Sezione Parametri Costi -->
+                                <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <h4 class="font-bold text-blue-800 mb-3">💰 Parametri Costo</h4>
+                                    
+                                    <div class="grid grid-cols-2 gap-2 mb-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">€/h Manodopera</label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                value=${parametriCosti.costoOraManodopera}
+                                                onInput=${(e) => setParametriCosti({...parametriCosti, costoOraManodopera: parseFloat(e.target.value) || 0})}
+                                                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">Costi Extra €</label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                value=${parametriCosti.costiExtra}
+                                                onInput=${(e) => setParametriCosti({...parametriCosti, costiExtra: parseFloat(e.target.value) || 0})}
+                                                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">€/h Disid. 40</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                value=${parametriCosti.costoOraDisidratatore40}
+                                                onInput=${(e) => setParametriCosti({...parametriCosti, costoOraDisidratatore40: parseFloat(e.target.value) || 0})}
+                                                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">€/h Disid. 100</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                value=${parametriCosti.costoOraDisidratatore100}
+                                                onInput=${(e) => setParametriCosti({...parametriCosti, costoOraDisidratatore100: parseFloat(e.target.value) || 0})}
+                                                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">Margine %</label>
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                value=${parametriCosti.marginePercentuale}
+                                                onInput=${(e) => setParametriCosti({...parametriCosti, marginePercentuale: parseFloat(e.target.value) || 0})}
+                                                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">IVA %</label>
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                value=${parametriCosti.aliquotaIVA}
+                                                onInput=${(e) => setParametriCosti({...parametriCosti, aliquotaIVA: parseFloat(e.target.value) || 0})}
+                                                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Riepilogo Costi Calcolato -->
+                                    ${(() => {
+                                        // Calcola ore
+                                        let oreManoopera = 0;
+                                        currentLavorazione.attivita.forEach(att => {
+                                            oreManoopera += calcolaOreManodopera(att.oraInizioLavoro, att.oraFineLavoro, att.numeroPersone);
+                                        });
+                                        const oreDisid40 = calcolaOreDisidratatore(currentLavorazione.attivita, '40');
+                                        const oreDisid100 = calcolaOreDisidratatore(currentLavorazione.attivita, '100');
+                                        
+                                        // Calcola costi
+                                        const costoManodopera = oreManoopera * parametriCosti.costoOraManodopera;
+                                        const costoDisid40 = oreDisid40 * parametriCosti.costoOraDisidratatore40;
+                                        const costoDisid100 = oreDisid100 * parametriCosti.costoOraDisidratatore100;
+                                        const costoEnergia = costoDisid40 + costoDisid100;
+                                        const costoProduzione = costoManodopera + costoEnergia + parametriCosti.costiExtra;
+                                        
+                                        // Calcola kg secco totale
+                                        const kgSeccoTotale = prodottiCompletamento.reduce((sum, p) => sum + (parseFloat(p.kgSecco) || 0), 0);
+                                        
+                                        // Calcola prezzi al kg
+                                        const costoAlKg = kgSeccoTotale > 0 ? costoProduzione / kgSeccoTotale : 0;
+                                        const prezzoConMargine = costoAlKg * (1 + parametriCosti.marginePercentuale / 100);
+                                        const prezzoConIVA = prezzoConMargine * (1 + parametriCosti.aliquotaIVA / 100);
+                                        
+                                        return html`
+                                            <div class="bg-white p-3 rounded-lg border border-blue-200">
+                                                <h5 class="font-medium text-blue-700 mb-2 text-sm">📊 Riepilogo Costi</h5>
+                                                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                                    <div class="text-gray-600">👷 Manodopera (${oreManoopera.toFixed(1)}h):</div>
+                                                    <div class="font-medium text-right">€ ${costoManodopera.toFixed(2)}</div>
+                                                    
+                                                    <div class="text-gray-600">⚡ Energia (${(oreDisid40 + oreDisid100).toFixed(1)}h):</div>
+                                                    <div class="font-medium text-right">€ ${costoEnergia.toFixed(2)}</div>
+                                                    
+                                                    ${parametriCosti.costiExtra > 0 && html`
+                                                        <div class="text-gray-600">➕ Costi extra:</div>
+                                                        <div class="font-medium text-right">€ ${parametriCosti.costiExtra.toFixed(2)}</div>
+                                                    `}
+                                                    
+                                                    <div class="text-gray-800 font-medium border-t pt-1 mt-1">💵 Totale produzione:</div>
+                                                    <div class="font-bold text-right border-t pt-1 mt-1">€ ${costoProduzione.toFixed(2)}</div>
+                                                </div>
+                                                
+                                                ${kgSeccoTotale > 0 && html`
+                                                    <div class="mt-3 pt-3 border-t border-blue-200">
+                                                        <h5 class="font-medium text-blue-700 mb-2 text-sm">💰 Prezzo al Kg (${kgSeccoTotale.toFixed(2)} kg)</h5>
+                                                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                                            <div class="text-gray-600">Costo puro:</div>
+                                                            <div class="font-medium text-right">€ ${costoAlKg.toFixed(2)}/kg</div>
+                                                            
+                                                            <div class="text-gray-600">+ Margine ${parametriCosti.marginePercentuale}%:</div>
+                                                            <div class="font-medium text-right">€ ${prezzoConMargine.toFixed(2)}/kg</div>
+                                                            
+                                                            <div class="text-green-700 font-medium">+ IVA ${parametriCosti.aliquotaIVA}%:</div>
+                                                            <div class="font-bold text-green-700 text-right">€ ${prezzoConIVA.toFixed(2)}/kg</div>
+                                                        </div>
+                                                    </div>
+                                                `}
+                                            </div>
+                                        `;
+                                    })()}
                                 </div>
                                 
                                 <button
