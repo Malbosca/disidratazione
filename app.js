@@ -208,11 +208,11 @@ function App() {
     const [parametriCosti, setParametriCosti] = useState(() => {
         const saved = localStorage.getItem('parametriCosti');
         return saved ? JSON.parse(saved) : {
-            costoOraManodopera: 12,
-            costoOraDisidratatore40: 0.80,
-            costoOraDisidratatore100: 1.50,
+            costoOraManodopera: 15,
+            costoOraDisidratatore40: 0.71,
+            costoOraDisidratatore100: 1.99,
             marginePercentuale: 30,
-            aliquotaIVA: 10,
+            aliquotaIVA: 4,
             costiExtra: 0
         };
     });
@@ -566,6 +566,12 @@ function App() {
         await caricaDati();
         
         setCurrentLavorazione(nuovaLav);
+        // Inizializza prodottiCompletamento con i prodotti della NUOVA lavorazione
+        setProdottiCompletamento(nuovaLav.prodotti.map(p => ({
+            ...p,
+            kgSecco: '',
+            categoria: p.categoria || 'verdura'
+        })));
         setFormData({
             dataInizio: new Date().toISOString().split('T')[0],
             prodotti: [{ id: 'PROD_' + Date.now(), prodotto: '', fornitore: '', kgAcquistati: '', kgSecco: '', categoria: 'verdura' }]
