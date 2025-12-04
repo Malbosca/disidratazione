@@ -196,6 +196,21 @@ const API = {
             console.error('Errore eliminazione pulizia:', error);
             return false;
         }
+    },
+
+    async aggiornaLotto(id, dati) {
+        try {
+            const response = await fetch(`${API_URL}/lotti/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dati)
+            });
+            if (!response.ok) throw new Error('Errore aggiornamento lotto');
+            return await response.json();
+        } catch (error) {
+            console.error('Errore aggiornamento lotto:', error);
+            return { success: false, error: error.message };
+        }
     }
 };
 
@@ -214,6 +229,8 @@ function App() {
     const [showDashboard, setShowDashboard] = useState(true);
     const [creatingLotto, setCreatingLotto] = useState(false);
     const [showPulizie, setShowPulizie] = useState(false);
+    const [showLotti, setShowLotti] = useState(false);
+    const [filtroLotti, setFiltroLotti] = useState('tutti');
     const [pulizie, setPulizie] = useState([]);
     
     // Parametri costi (valori di default salvati in localStorage)
@@ -315,6 +332,23 @@ function App() {
     const caricaPulizie = async () => {
         const p = await API.caricaPulizie();
         setPulizie(p);
+    };
+
+    const aggiornaQuantitaLotto = async (idLotto, quantita) => {
+        const risultato = await API.aggiornaLotto(idLotto, { quantitaDisponibile: quantita });
+        if (risultato.success) {
+            // Aggiorna lo stato locale
+            setLotti(lotti.map(l => l.id === idLotto ? { ...l, quantitaDisponibile: quantita } : l));
+        }
+    };
+
+    const toggleEsauritoLotto = async (idLotto, esaurito) => {
+        const risultato = await API.aggiornaLotto(idLotto, { esaurito: esaurito ? 1 : 0 });
+        if (risultato.success) {
+            // Aggiorna lo stato locale
+            setLotti(lotti.map(l => l.id === idLotto ? { ...l, esaurito: esaurito } : l));
+        }
+        await caricaDati(); // Ricarica per sincronizzare
     };
 
     const salvaPulizia = async () => {
@@ -860,6 +894,7 @@ function App() {
         setShowForm(false);
         setShowReport(false);
         setShowPulizie(false);
+        setShowLotti(false);
     };
 
     const aggiornaProdottoCompletamento = (index, campo, valore) => {
@@ -915,28 +950,34 @@ function App() {
                 </div>
 
                 <!-- Pulsanti Azione -->
-                <div class="grid grid-cols-4 gap-2 mb-4">
+                <div class="grid grid-cols-5 gap-1 mb-4">
                     <button
-                        onClick=${() => { setShowDashboard(!showDashboard); setShowForm(false); setShowReport(false); setShowPulizie(false); }}
-                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showDashboard ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white`}"
+                        onClick=${() => { setShowDashboard(!showDashboard); setShowForm(false); setShowReport(false); setShowPulizie(false); setShowLotti(false); }}
+                        class="${`flex items-center justify-center gap-1 px-1 py-3 rounded-xl font-medium shadow-md transition-all text-xs ${showDashboard ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white`}"
                     >
                         📈 Home
                     </button>
                     <button
-                        onClick=${() => { setShowForm(!showForm); setShowDashboard(false); setShowReport(false); setShowPulizie(false); }}
-                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white`}"
+                        onClick=${() => { setShowForm(!showForm); setShowDashboard(false); setShowReport(false); setShowPulizie(false); setShowLotti(false); }}
+                        class="${`flex items-center justify-center gap-1 px-1 py-3 rounded-xl font-medium shadow-md transition-all text-xs ${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white`}"
                     >
                         ${showForm ? '✕' : '➕'} Nuova
                     </button>
                     <button
-                        onClick=${() => { setShowPulizie(!showPulizie); setShowDashboard(false); setShowForm(false); setShowReport(false); }}
-                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showPulizie ? 'bg-gray-500 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-700'} text-white`}"
+                        onClick=${() => { setShowLotti(!showLotti); setShowDashboard(false); setShowForm(false); setShowReport(false); setShowPulizie(false); }}
+                        class="${`flex items-center justify-center gap-1 px-1 py-3 rounded-xl font-medium shadow-md transition-all text-xs ${showLotti ? 'bg-gray-500 hover:bg-gray-600' : 'bg-teal-600 hover:bg-teal-700'} text-white`}"
+                    >
+                        ${showLotti ? '✕' : '📦'} Lotti
+                    </button>
+                    <button
+                        onClick=${() => { setShowPulizie(!showPulizie); setShowDashboard(false); setShowForm(false); setShowReport(false); setShowLotti(false); }}
+                        class="${`flex items-center justify-center gap-1 px-1 py-3 rounded-xl font-medium shadow-md transition-all text-xs ${showPulizie ? 'bg-gray-500 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-700'} text-white`}"
                     >
                         ${showPulizie ? '✕' : '🧹'} Pulizie
                     </button>
                     <button
-                        onClick=${() => { setShowReport(!showReport); setShowDashboard(false); setShowForm(false); setShowPulizie(false); }}
-                        class="${`flex items-center justify-center gap-1 px-2 py-3 rounded-xl font-medium shadow-md transition-all text-sm ${showReport ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white`}"
+                        onClick=${() => { setShowReport(!showReport); setShowDashboard(false); setShowForm(false); setShowPulizie(false); setShowLotti(false); }}
+                        class="${`flex items-center justify-center gap-1 px-1 py-3 rounded-xl font-medium shadow-md transition-all text-xs ${showReport ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white`}"
                     >
                         ${showReport ? '✕' : '📊'} Report
                     </button>
@@ -1012,7 +1053,7 @@ function App() {
                                     ${lavorazioni.filter(l => !l.completata).map(lav => html`
                                         <div 
                                             class="bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer hover:bg-yellow-100"
-                                            onClick=${() => { setCurrentLavorazione(lav); setProdottiCompletamento(lav.prodotti.map(p => ({...p, kgSecco: p.kgSecco || '', categoria: p.categoria || 'verdura'}))); setShowDashboard(false); }}
+                                            onClick=${() => { setCurrentLavorazione(lav); setProdottiCompletamento(lav.prodotti.map(p => ({...p, kgSecco: p.kgSecco || '', categoria: p.categoria || 'verdura'}))); setShowDashboard(false); setShowLotti(false); }}
                                         >
                                             <div class="flex justify-between items-center">
                                                 <div>
@@ -1208,6 +1249,129 @@ function App() {
                                 </div>
                             </div>
                         `}
+                    </div>
+                `}
+
+                <!-- Sezione Lotti -->
+                ${showLotti && html`
+                    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+                        <h2 class="text-lg font-bold text-teal-800 mb-4">📦 Inventario Lotti</h2>
+                        
+                        <!-- Statistiche lotti -->
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <div class="bg-teal-50 rounded-lg p-2 border border-teal-200 text-center">
+                                <div class="text-xl font-bold text-teal-700">${lotti.length}</div>
+                                <div class="text-xs text-teal-600">Totali</div>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-2 border border-green-200 text-center">
+                                <div class="text-xl font-bold text-green-700">${lotti.filter(l => !l.esaurito).length}</div>
+                                <div class="text-xs text-green-600">Disponibili</div>
+                            </div>
+                            <div class="bg-red-50 rounded-lg p-2 border border-red-200 text-center">
+                                <div class="text-xl font-bold text-red-700">${lotti.filter(l => l.esaurito).length}</div>
+                                <div class="text-xs text-red-600">Esauriti</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Filtri -->
+                        <div class="flex gap-2 mb-4">
+                            <button
+                                onClick=${() => setFiltroLotti('tutti')}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${!filtroLotti || filtroLotti === 'tutti' ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                Tutti
+                            </button>
+                            <button
+                                onClick=${() => setFiltroLotti('disponibili')}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${filtroLotti === 'disponibili' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                Disponibili
+                            </button>
+                            <button
+                                onClick=${() => setFiltroLotti('esauriti')}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${filtroLotti === 'esauriti' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                Esauriti
+                            </button>
+                        </div>
+                        
+                        <!-- Lista lotti -->
+                        <div class="space-y-2">
+                            ${lotti.length === 0 ? html`
+                                <p class="text-gray-500 text-center py-8">Nessun lotto creato</p>
+                            ` : lotti
+                                .filter(l => {
+                                    if (!filtroLotti || filtroLotti === 'tutti') return true;
+                                    if (filtroLotti === 'disponibili') return !l.esaurito;
+                                    if (filtroLotti === 'esauriti') return l.esaurito;
+                                    return true;
+                                })
+                                .map(lotto => html`
+                                <div class="${`border rounded-lg p-3 ${lotto.esaurito ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div class="font-bold text-gray-800">${lotto.lotNumber}</div>
+                                            <div class="text-sm text-gray-600">${lotto.productType}</div>
+                                        </div>
+                                        <span class="${`px-2 py-1 rounded-full text-xs font-medium ${lotto.esaurito ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}">
+                                            ${lotto.esaurito ? '❌ Esaurito' : '✅ Disponibile'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+                                        <div class="text-gray-600">
+                                            📅 ${new Date(lotto.processingDate).toLocaleDateString('it-IT')}
+                                        </div>
+                                        <div class="text-gray-600">
+                                            🏪 ${lotto.fornitore || '-'}
+                                        </div>
+                                        <div class="text-gray-600">
+                                            📦 ${lotto.dryProductKg?.toFixed(2) || 0} kg prodotti
+                                        </div>
+                                        <div class="text-gray-600">
+                                            📊 Disp: ${lotto.quantitaDisponibile?.toFixed(2) || lotto.dryProductKg?.toFixed(2) || 0} kg
+                                        </div>
+                                    </div>
+                                    
+                                    ${lotto.costPerKgDry > 0 && html`
+                                        <div class="bg-white rounded p-2 mb-2 text-xs">
+                                            <div class="grid grid-cols-3 gap-1">
+                                                <div>
+                                                    <span class="text-gray-500">Costo:</span>
+                                                    <span class="font-medium"> €${lotto.costPerKgDry?.toFixed(2)}/kg</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-500">Prezzo:</span>
+                                                    <span class="font-medium"> €${lotto.pricePerKg?.toFixed(2)}/kg</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-500">+IVA:</span>
+                                                    <span class="font-medium text-green-600"> €${lotto.pricePerKgVat?.toFixed(2)}/kg</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `}
+                                    
+                                    <!-- Modifica quantità e stato -->
+                                    <div class="flex gap-2 items-center">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="Kg disponibili"
+                                            value=${lotto.quantitaDisponibile ?? lotto.dryProductKg ?? ''}
+                                            onInput=${(e) => aggiornaQuantitaLotto(lotto.id, parseFloat(e.target.value))}
+                                            class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                                        />
+                                        <button
+                                            onClick=${() => toggleEsauritoLotto(lotto.id, !lotto.esaurito)}
+                                            class="${`px-3 py-1 rounded text-xs font-medium ${lotto.esaurito ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}"
+                                        >
+                                            ${lotto.esaurito ? '🔄 Riattiva' : '❌ Esaurito'}
+                                        </button>
+                                    </div>
+                                </div>
+                            `)}
+                        </div>
                     </div>
                 `}
 
