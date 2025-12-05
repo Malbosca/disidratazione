@@ -278,6 +278,10 @@ function App() {
         note: '',
         righe: []
     });
+    const [filtroStorico, setFiltroStorico] = useState({
+        categoria: 'tutte',
+        prodotto: ''
+    });
     
     // Parametri costi (valori di default salvati in localStorage)
     const [parametriCosti, setParametriCosti] = useState(() => {
@@ -2306,13 +2310,82 @@ function App() {
                 <div class="bg-white rounded-lg shadow-lg p-4">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Storico</h2>
                     
+                    <!-- Filtri -->
+                    <div class="mb-4 space-y-2">
+                        <div class="flex gap-2 flex-wrap">
+                            <button
+                                onClick=${() => setFiltroStorico({...filtroStorico, categoria: 'tutte'})}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${filtroStorico.categoria === 'tutte' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                Tutte
+                            </button>
+                            <button
+                                onClick=${() => setFiltroStorico({...filtroStorico, categoria: 'verdura'})}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${filtroStorico.categoria === 'verdura' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                🥬 Verdura
+                            </button>
+                            <button
+                                onClick=${() => setFiltroStorico({...filtroStorico, categoria: 'frutta'})}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${filtroStorico.categoria === 'frutta' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                🍎 Frutta
+                            </button>
+                            <button
+                                onClick=${() => setFiltroStorico({...filtroStorico, categoria: 'altro'})}
+                                class="${`px-3 py-1 rounded-lg text-xs font-medium ${filtroStorico.categoria === 'altro' ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-700'}`}"
+                            >
+                                🍄 Altro
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="🔍 Cerca prodotto..."
+                            value=${filtroStorico.prodotto}
+                            onInput=${(e) => setFiltroStorico({...filtroStorico, prodotto: e.target.value})}
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                    </div>
+                    
                     ${lavorazioni.length === 0 ? html`
                         <p class="text-gray-500 text-center py-8">Nessuna lavorazione</p>
                     ` : html`
                         <div class="space-y-3">
-                            ${lavorazioni
-                                .sort((a, b) => new Date(b.dataInizio) - new Date(a.dataInizio))
-                                .map(lav => {
+                            ${(() => {
+                                const lavorazioniFiltrate = lavorazioni
+                                    .filter(lav => {
+                                        const prodotti = lav.prodotti || [];
+                                        
+                                        // Filtro categoria
+                                        if (filtroStorico.categoria !== 'tutte') {
+                                            const haCategoria = prodotti.some(p => {
+                                                const cat = (p.categoria || 'verdura').toLowerCase();
+                                                if (filtroStorico.categoria === 'altro') {
+                                                    return cat !== 'verdura' && cat !== 'frutta';
+                                                }
+                                                return cat === filtroStorico.categoria;
+                                            });
+                                            if (!haCategoria) return false;
+                                        }
+                                        
+                                        // Filtro prodotto
+                                        if (filtroStorico.prodotto.trim()) {
+                                            const search = filtroStorico.prodotto.toLowerCase().trim();
+                                            const haProdotto = prodotti.some(p => 
+                                                (p.prodotto || '').toLowerCase().includes(search)
+                                            );
+                                            if (!haProdotto) return false;
+                                        }
+                                        
+                                        return true;
+                                    })
+                                    .sort((a, b) => new Date(b.dataInizio) - new Date(a.dataInizio));
+                                
+                                if (lavorazioniFiltrate.length === 0) {
+                                    return html`<p class="text-gray-500 text-center py-8">Nessuna lavorazione trovata</p>`;
+                                }
+                                
+                                return lavorazioniFiltrate.map(lav => {
                                     const prodotti = lav.prodotti || [];
                                     const totaleKgFreschi = prodotti.reduce((sum, p) => sum + (parseFloat(p.kgAcquistati) || 0), 0);
                                     const totaleKgSecchi = prodotti.reduce((sum, p) => sum + (parseFloat(p.kgSecco) || 0), 0);
@@ -2409,7 +2482,8 @@ function App() {
                                             </button>
                                         </div>
                                     </div>
-                                `})}
+                                `;});
+                            })()}
                         </div>
                     `}
                 </div>
